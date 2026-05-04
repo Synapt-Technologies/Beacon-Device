@@ -41,6 +41,8 @@ void StaWifiConnection::start()
 
     _reconnectTimer = xTimerCreate("wifi_rc", pdMS_TO_TICKS(RECONNECT_MS),
                                    pdFALSE, this, reconnectTimerCb);
+    _scanMutex = xSemaphoreCreateMutex();
+    ESP_ERROR_CHECK(_scanMutex ? ESP_OK : ESP_ERR_NO_MEM);
 
     _running    = true;
     _retryCount = 0;
@@ -80,7 +82,14 @@ void StaWifiConnection::stop()
 
     _ip     = {};
     _status = NetworkStatus::DISCONNECTED;
-    _scanInProgress = false;
+    if (_scanMutex) {
+        xSemaphoreTake(_scanMutex, portMAX_DELAY);
+        _scanInProgress = false;
+        _scanCount = 0;
+        xSemaphoreGive(_scanMutex);
+        vSemaphoreDelete(_scanMutex);
+        _scanMutex = nullptr;
+    }
     fireCallback(NetworkStatus::DISCONNECTED);
 }
 
@@ -122,20 +131,33 @@ void StaWifiConnection::triggerScan()
     esp_err_t err = esp_wifi_scan_start(&cfg, false);
     if (err == ESP_ERR_WIFI_STATE) {
         ESP_LOGI(TAG, "Scan already in progress");
-        _scanInProgress = true;
+        if (_scanMutex && xSemaphoreTake(_scanMutex, portMAX_DELAY) == pdTRUE) {
+            _scanInProgress = true;
+            xSemaphoreGive(_scanMutex);
+        }
         return;
     }
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "Failed to start scan: %s", esp_err_to_name(err));
-        _scanInProgress = false;
+        if (_scanMutex && xSemaphoreTake(_scanMutex, portMAX_DELAY) == pdTRUE) {
+            _scanInProgress = false;
+            xSemaphoreGive(_scanMutex);
+        }
         return;
     }
-    _scanInProgress = true;
+    if (_scanMutex && xSemaphoreTake(_scanMutex, portMAX_DELAY) == pdTRUE) {
+        _scanInProgress = true;
+        xSemaphoreGive(_scanMutex);
+    }
 }
 
 bool StaWifiConnection::isScanInProgress() const
 {
-    return _scanInProgress;
+    if (!_scanMutex) return false;
+    if (xSemaphoreTake(_scanMutex, portMAX_DELAY) != pdTRUE) return true;
+    bool inProgress = _scanInProgress;
+    xSemaphoreGive(_scanMutex);
+    return inProgress;
 }
 
 int StaWifiConnection::getScanResults(WifiScanResult* out, int maxCount)
@@ -145,8 +167,12 @@ int StaWifiConnection::getScanResults(WifiScanResult* out, int maxCount)
         return 0;
     }
 
-    int count = _scanCount < maxCount ? _scanCount : maxCount;
-    memcpy(out, _scanResults, count * sizeof(WifiScanResult));
+    int count = 0;
+    if (_scanMutex && xSemaphoreTake(_scanMutex, portMAX_DELAY) == pdTRUE) {
+        count = _scanCount < maxCount ? _scanCount : maxCount;
+        memcpy(out, _scanResults, count * sizeof(WifiScanResult));
+        xSemaphoreGive(_scanMutex);
+    }
     return count;
 }
 
@@ -235,12 +261,14 @@ void StaWifiConnection::onEvent(esp_event_base_t base, int32_t id, void* data)
         }
 
         case WIFI_EVENT_SCAN_DONE: {
-            _scanInProgress = false;
-
             auto* e = static_cast<wifi_event_sta_scan_done_t*>(data);
             if (e && e->status != 0) {
                 ESP_LOGW(TAG, "Scan failed, status=%d", e->status);
-                _scanCount = 0;
+                if (_scanMutex && xSemaphoreTake(_scanMutex, portMAX_DELAY) == pdTRUE) {
+                    _scanInProgress = false;
+                    _scanCount = 0;
+                    xSemaphoreGive(_scanMutex);
+                }
                 break;
             }
 
@@ -248,18 +276,26 @@ void StaWifiConnection::onEvent(esp_event_base_t base, int32_t id, void* data)
             esp_err_t err = esp_wifi_scan_get_ap_records(&count, _scanRecords);
             if (err != ESP_OK) {
                 ESP_LOGW(TAG, "Scan results fetch failed: %s", esp_err_to_name(err));
-                _scanCount = 0;
+                if (_scanMutex && xSemaphoreTake(_scanMutex, portMAX_DELAY) == pdTRUE) {
+                    _scanInProgress = false;
+                    _scanCount = 0;
+                    xSemaphoreGive(_scanMutex);
+                }
                 break;
             }
 
-            _scanCount = count;
-            for (int i = 0; i < count; i++) {
-                strncpy(_scanResults[i].ssid, (char*)_scanRecords[i].ssid, 32);
-                _scanResults[i].ssid[32] = '\0';
-                memcpy(_scanResults[i].bssid, _scanRecords[i].bssid, 6);
-                _scanResults[i].channel  = _scanRecords[i].primary;
-                _scanResults[i].rssi     = _scanRecords[i].rssi;
-                _scanResults[i].authmode = _scanRecords[i].authmode;
+            if (_scanMutex && xSemaphoreTake(_scanMutex, portMAX_DELAY) == pdTRUE) {
+                _scanInProgress = false;
+                _scanCount = count;
+                for (int i = 0; i < count; i++) {
+                    strncpy(_scanResults[i].ssid, (char*)_scanRecords[i].ssid, 32);
+                    _scanResults[i].ssid[32] = '\0';
+                    memcpy(_scanResults[i].bssid, _scanRecords[i].bssid, 6);
+                    _scanResults[i].channel  = _scanRecords[i].primary;
+                    _scanResults[i].rssi     = _scanRecords[i].rssi;
+                    _scanResults[i].authmode = _scanRecords[i].authmode;
+                }
+                xSemaphoreGive(_scanMutex);
             }
             ESP_LOGI(TAG, "Scan done: %d APs", count);
             break;

@@ -3,6 +3,7 @@
 #include "networkConnection/IWifiConnection.hpp"
 #include "freertos/FreeRTOS.h"
 #include "freertos/timers.h"
+#include "freertos/semphr.h"
 #include "esp_wifi.h"
 
 class StaWifiConnection : public IWifiConnection {
@@ -52,6 +53,7 @@ private:
     wifi_ap_record_t _scanRecords[SCAN_MAX] = {};
     int            _scanCount             = 0;
     bool           _scanInProgress        = false;
+    SemaphoreHandle_t _scanMutex          = nullptr; // TODO: Simplify. maybe async http endpoint?
 
     static void eventHandler(void* arg, esp_event_base_t base,
                              int32_t id, void* data);

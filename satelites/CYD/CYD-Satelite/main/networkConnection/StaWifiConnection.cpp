@@ -110,7 +110,43 @@ void StaWifiConnection::configure(const char* ssid, const char* password)
     _ssid[sizeof(_ssid) - 1] = '\0';
     _pass[sizeof(_pass) - 1] = '\0';
 
-    if (_staNetif) applyStaConfig(); // update driver; orchestrator triggers reconnect
+    if (!_staNetif) return;
+
+    bool stopScan = false;
+    if (_scanMutex && xSemaphoreTake(_scanMutex, portMAX_DELAY) == pdTRUE) {
+        stopScan = _scanInProgress;
+        _scanInProgress = false;
+        _scanCount = 0;
+        xSemaphoreGive(_scanMutex);
+    }
+    if (stopScan) {
+        esp_err_t scanStopErr = esp_wifi_scan_stop();
+        if (scanStopErr != ESP_OK && scanStopErr != ESP_ERR_WIFI_STATE) {
+            ESP_LOGW(TAG, "Failed to stop scan before reconnect: %s", esp_err_to_name(scanStopErr));
+        }
+    }
+
+    applyStaConfig();
+
+    esp_err_t err = esp_wifi_disconnect();
+    if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_CONNECT) {
+        ESP_LOGW(TAG, "Disconnect before reconnect failed: %s", esp_err_to_name(err));
+    }
+
+    if (_ssid[0] == '\0') {
+        _status = NetworkStatus::DISCONNECTED;
+        fireCallback(NetworkStatus::DISCONNECTED);
+        return;
+    }
+
+    err = esp_wifi_connect();
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to start WiFi connect after config update: %s", esp_err_to_name(err));
+        return;
+    }
+
+    _status = NetworkStatus::CONNECTING;
+    fireCallback(NetworkStatus::CONNECTING);
 }
 
 int8_t StaWifiConnection::getRssi() const // TODO Change return type?

@@ -25,6 +25,7 @@ namespace HttpHandlers {
     esp_err_t handleGetConfig(httpd_req_t* req); // GET  /api/config
     esp_err_t handleSetConfig(httpd_req_t* req); // POST /api/config
     esp_err_t handleGetStatus(httpd_req_t* req); // GET  /api/status
+    esp_err_t handleStartScan(httpd_req_t* req); // POST /api/scan/start
     esp_err_t handleGetScan  (httpd_req_t* req); // GET  /api/scan
     esp_err_t handleReboot   (httpd_req_t* req); // POST /api/reboot
 

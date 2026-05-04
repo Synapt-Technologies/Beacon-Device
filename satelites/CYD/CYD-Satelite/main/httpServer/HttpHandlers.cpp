@@ -231,22 +231,41 @@ esp_err_t HttpHandlers::handleGetStatus(httpd_req_t* req)
 
 // ── GET /api/scan ─────────────────────────────────────────────────────────────
 
+esp_err_t HttpHandlers::handleStartScan(httpd_req_t* req)
+{
+    auto* ctx  = static_cast<HttpCtx*>(req->user_ctx);
+    auto* wifi = ctx->network.asWifi();
+
+    cJSON* root = cJSON_CreateObject();
+    bool ok = wifi != nullptr;
+    if (wifi) {
+        wifi->triggerScan();
+    }
+    cJSON_AddBoolToObject(root, "ok", ok);
+    cJSON_AddBoolToObject(root, "scanning", wifi ? wifi->isScanInProgress() : false);
+    return sendJson(req, root);
+}
+
+// ── GET /api/scan ─────────────────────────────────────────────────────────────
+
 esp_err_t HttpHandlers::handleGetScan(httpd_req_t* req)
 {
     auto* ctx  = static_cast<HttpCtx*>(req->user_ctx);
     auto* wifi = ctx->network.asWifi();
 
-    cJSON* root = cJSON_CreateArray();
+    cJSON* root = cJSON_CreateObject();
+    cJSON_AddBoolToObject(root, "scanning", wifi ? wifi->isScanInProgress() : false);
+    cJSON* resultsJson = cJSON_AddArrayToObject(root, "results");
+
     if (wifi) {
         WifiScanResult results[32];
         int count = wifi->getScanResults(results, 32);
-        wifi->triggerScan(); // kick off a fresh scan for next request
         for (int i = 0; i < count; i++) {
             if (results[i].ssid[0] == '\0') continue;
             cJSON* entry = cJSON_CreateObject();
             cJSON_AddStringToObject(entry, "ssid", results[i].ssid);
             cJSON_AddNumberToObject(entry, "rssi", results[i].rssi);
-            cJSON_AddItemToArray(root, entry);
+            cJSON_AddItemToArray(resultsJson, entry);
         }
     }
     return sendJson(req, root);

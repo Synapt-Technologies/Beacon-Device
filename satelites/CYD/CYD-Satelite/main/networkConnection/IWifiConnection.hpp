@@ -22,6 +22,7 @@ public:
     virtual void   configure(const char* ssid, const char* password) = 0;
     virtual int8_t getRssi()                                   const = 0;
     virtual void   triggerScan()                                     = 0;
+    virtual bool   isScanInProgress()                          const = 0;
     virtual int    getScanResults(WifiScanResult* out, int maxCount) = 0;
 
     // AP

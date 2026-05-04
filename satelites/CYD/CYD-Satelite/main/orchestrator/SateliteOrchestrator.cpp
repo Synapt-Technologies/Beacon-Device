@@ -138,6 +138,7 @@ void SateliteOrchestrator::registerHttpHandlers()
     _http.registerHandler("/api/config", HTTP_GET,  HttpHandlers::handleGetConfig, &_httpCtx);
     _http.registerHandler("/api/config", HTTP_POST, HttpHandlers::handleSetConfig, &_httpCtx);
     _http.registerHandler("/api/status", HTTP_GET,  HttpHandlers::handleGetStatus, &_httpCtx);
+    _http.registerHandler("/api/scan/start", HTTP_POST, HttpHandlers::handleStartScan, &_httpCtx);
     _http.registerHandler("/api/scan",   HTTP_GET,  HttpHandlers::handleGetScan,   &_httpCtx);
     _http.registerHandler("/api/reboot", HTTP_POST, HttpHandlers::handleReboot,    nullptr);
 }

@@ -21,6 +21,7 @@ public:
     void   configure(const char* ssid, const char* password)    override;
     int8_t getRssi()                                      const override;
     void   triggerScan()                                        override;
+    bool   isScanInProgress()                             const override;
     int    getScanResults(WifiScanResult* out, int maxCount)     override;
 
     // IWifiConnection — AP
@@ -48,7 +49,9 @@ private:
     char _pass[64] = {};
 
     WifiScanResult _scanResults[SCAN_MAX] = {};
+    wifi_ap_record_t _scanRecords[SCAN_MAX] = {};
     int            _scanCount             = 0;
+    bool           _scanInProgress        = false;
 
     static void eventHandler(void* arg, esp_event_base_t base,
                              int32_t id, void* data);

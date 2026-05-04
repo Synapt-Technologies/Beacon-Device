@@ -24,16 +24,27 @@ async function load(){
 
 async function scan(){
   try{
-    const r = await fetch('/api/scan');
-    const d = await r.json();
-    const sel = document.getElementById('wifi_ssid_sel');
-    sel.innerHTML = '<option value="">-- scan results --</option>';
-    d.forEach((s) => {
-      const o = document.createElement('option');
-      o.value = s;
-      o.textContent = s;
-      sel.appendChild(o);
-    });
+    await fetch('/api/scan/start', { method: 'POST' });
+    for(let i = 0; i < 20; i++){
+      const r = await fetch('/api/scan');
+      const d = await r.json();
+      const results = Array.isArray(d.results) ? d.results : [];
+      const sel = document.getElementById('wifi_ssid_sel');
+      sel.innerHTML = '<option value="">-- scan results --</option>';
+      results.forEach((s) => {
+        const ssid = typeof s === 'string' ? s : (s.ssid || '');
+        if(!ssid) return;
+        const o = document.createElement('option');
+        o.value = ssid;
+        o.textContent = typeof s === 'object' && s.rssi !== undefined
+          ? `${ssid} (${s.rssi} dBm)`
+          : ssid;
+        sel.appendChild(o);
+      });
+      if(!d.scanning) return;
+      await new Promise(resolve => setTimeout(resolve, 350));
+    }
+    msg('Scan timed out');
   }catch(_e){
     msg('Scan failed');
   }

@@ -1,4 +1,5 @@
 #include "networkConnection/StaWifiConnection.hpp"
+#include "esp_err.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_netif.h"
@@ -79,6 +80,7 @@ void StaWifiConnection::stop()
 
     _ip     = {};
     _status = NetworkStatus::DISCONNECTED;
+    _scanInProgress = false;
     fireCallback(NetworkStatus::DISCONNECTED);
 }
 
@@ -111,12 +113,38 @@ int8_t StaWifiConnection::getRssi() const // TODO Change return type?
 
 void StaWifiConnection::triggerScan()
 {
+    if (!_running) {
+        ESP_LOGW(TAG, "Scan requested while WiFi is stopped");
+        return;
+    }
+
     wifi_scan_config_t cfg = {};
-    esp_wifi_scan_start(&cfg, false);
+    esp_err_t err = esp_wifi_scan_start(&cfg, false);
+    if (err == ESP_ERR_WIFI_STATE) {
+        ESP_LOGI(TAG, "Scan already in progress");
+        _scanInProgress = true;
+        return;
+    }
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to start scan: %s", esp_err_to_name(err));
+        _scanInProgress = false;
+        return;
+    }
+    _scanInProgress = true;
+}
+
+bool StaWifiConnection::isScanInProgress() const
+{
+    return _scanInProgress;
 }
 
 int StaWifiConnection::getScanResults(WifiScanResult* out, int maxCount)
 {
+    if (!out || maxCount <= 0) {
+        ESP_LOGW(TAG, "Invalid scan result buffer");
+        return 0;
+    }
+
     int count = _scanCount < maxCount ? _scanCount : maxCount;
     memcpy(out, _scanResults, count * sizeof(WifiScanResult));
     return count;
@@ -207,17 +235,31 @@ void StaWifiConnection::onEvent(esp_event_base_t base, int32_t id, void* data)
         }
 
         case WIFI_EVENT_SCAN_DONE: {
+            _scanInProgress = false;
+
+            auto* e = static_cast<wifi_event_sta_scan_done_t*>(data);
+            if (e && e->status != 0) {
+                ESP_LOGW(TAG, "Scan failed, status=%d", e->status);
+                _scanCount = 0;
+                break;
+            }
+
             uint16_t count = SCAN_MAX;
-            wifi_ap_record_t raw[SCAN_MAX];
-            esp_wifi_scan_get_ap_records(&count, raw);
+            esp_err_t err = esp_wifi_scan_get_ap_records(&count, _scanRecords);
+            if (err != ESP_OK) {
+                ESP_LOGW(TAG, "Scan results fetch failed: %s", esp_err_to_name(err));
+                _scanCount = 0;
+                break;
+            }
+
             _scanCount = count;
             for (int i = 0; i < count; i++) {
-                strncpy(_scanResults[i].ssid, (char*)raw[i].ssid, 32);
+                strncpy(_scanResults[i].ssid, (char*)_scanRecords[i].ssid, 32);
                 _scanResults[i].ssid[32] = '\0';
-                memcpy(_scanResults[i].bssid, raw[i].bssid, 6);
-                _scanResults[i].channel  = raw[i].primary;
-                _scanResults[i].rssi     = raw[i].rssi;
-                _scanResults[i].authmode = raw[i].authmode;
+                memcpy(_scanResults[i].bssid, _scanRecords[i].bssid, 6);
+                _scanResults[i].channel  = _scanRecords[i].primary;
+                _scanResults[i].rssi     = _scanRecords[i].rssi;
+                _scanResults[i].authmode = _scanRecords[i].authmode;
             }
             ESP_LOGI(TAG, "Scan done: %d APs", count);
             break;

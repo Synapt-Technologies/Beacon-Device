@@ -100,6 +100,8 @@ void SateliteOrchestrator::onDisplayChanged(const Settings::Display& s)
 // ? Runtime Callbacks
 void SateliteOrchestrator::applyTally(TallyState state)
 {
+    ESP_LOGI(TAG, "Applying tally state: %d", static_cast<int>(state));
+
     for (int i = 0; i < _consumerCount; i++) {
         _consumers[i]->setState(state);
     }
@@ -109,6 +111,7 @@ void SateliteOrchestrator::applyAlert(DeviceAlertAction action,
                                        DeviceAlertTarget target,
                                        uint32_t timeout)
 {
+    ESP_LOGI(TAG, "Applying alert: %d", static_cast<int>(action));
     for (int i = 0; i < _consumerCount; i++) {
         _consumers[i]->setAlert(action, target, timeout);
     }

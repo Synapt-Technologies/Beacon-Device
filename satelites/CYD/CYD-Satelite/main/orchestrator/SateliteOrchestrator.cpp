@@ -32,7 +32,6 @@ void SateliteOrchestrator::start()
     // TODO Init inside of ochestrator? Probably yes because the callbacks.
     // TODO Check order.
     _network.start();
-    _beacon.start();
 
     _config.load();
 
@@ -125,7 +124,12 @@ void SateliteOrchestrator::onNetworkStatus(NetworkStatus status, esp_ip4_addr_t 
 {
     _networkStatus = status;
     this->_networkIp = ip;
-    // TODO Check if state changes need to be handled by the orchestrator. E.g. Beacon connection.
+
+    if (status == NetworkStatus::CONNECTED) {
+        _beacon.start();
+    } else {
+        _beacon.stop();
+    }
 }
 
 

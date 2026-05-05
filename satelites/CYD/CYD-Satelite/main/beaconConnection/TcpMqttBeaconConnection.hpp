@@ -21,8 +21,9 @@ public:
             this->stop();
 
         esp_mqtt_client_config_t cfg = {};
-        cfg.broker.address.uri = _url;
-        cfg.task.priority      = 18;
+        cfg.broker.address.uri             = _url;
+        cfg.task.priority                  = 18;
+        cfg.network.reconnect_timeout_ms   = 2000;
 
         _client = esp_mqtt_client_init(&cfg);
         esp_mqtt_client_register_event(_client,

@@ -14,9 +14,8 @@ struct StripSection { // Todo: Brightness section? -> Then the way they are iter
 class WS2812Consumer : public IConsumer {
 
 public:
-    WS2812Consumer(led_strip_handle_t strip, uint8_t ledCount, StripSection sections[], uint8_t sectionCount, DeviceAlertTarget target) {
+    WS2812Consumer(led_strip_handle_t strip, uint8_t ledCount, StripSection sections[], uint8_t sectionCount) {
 
-        _target = target;
         _strip = strip;
         _ledCount = ledCount;
         _sections = sections;
@@ -27,8 +26,6 @@ public:
     }
 
 private:
-
-    DeviceAlertTarget  _target;
 
     led_strip_handle_t _strip;
     int                _ledCount;
@@ -49,22 +46,45 @@ private:
         led_strip_refresh(_strip);
     }
 
+    void setColorRange(uint8_t start, uint8_t count, uint8_t r, uint8_t g, uint8_t b) {
+        const uint8_t sr = scale_brightness(r);
+        const uint8_t sg = scale_brightness(g);
+        const uint8_t sb = scale_brightness(b);
+        for (uint8_t i = start; i < start + count; i++)
+            led_strip_set_pixel(_strip, i, sr, sg, sb);
+    }
+
 
     void setAlertStep(DeviceAlertAction action, DeviceAlertTarget target, uint8_t step) override {
-        if (target != _target) return; // This consumer only reacts to its configured target
 
-        const AlertPatternConfig* pattern = getAlertPattern(action);
-        if (!pattern) return; // No pattern for this action (e.g. CLEAR)
+        const AlertPatternConfig* config = getAlertPattern(action);
+        if (!config) return;
 
-        TallyState state = pattern->pattern[step % pattern->patternLen];
-        this->applyState(state);
+        for (uint8_t s = 0; s < _sectionCount; s++) {
+            const StripSection& sec = _sections[s];
+            if (sec.target != DeviceAlertTarget::ALL && target != DeviceAlertTarget::ALL && sec.target != target)
+                continue;
+
+            uint8_t start = sec.startLed;
+            uint8_t count = (s + 1 < _sectionCount)
+                ? _sections[s + 1].startLed - start
+                : _ledCount - start;
+
+            uint8_t variantIdx = sec.alertPattern % config->variantCount;
+            TallyState state = config->patterns[variantIdx][step % config->patternLen];
+
+            uint8_t r, g, b;
+            stateToColor(state, r, g, b);
+            setColorRange(start, count, r, g, b);
+        }
+        led_strip_refresh(_strip);
     }
 
     struct AlertPatternConfig {
         uint32_t speedMs;
-        // const TallyState (*pattern)[5];
-        const TallyState *pattern;
+        const TallyState (*patterns)[5];
         uint8_t patternLen;
+        uint8_t variantCount;
     };
 
     uint32_t getAlertStepLength(DeviceAlertAction action) override {
@@ -76,29 +96,26 @@ private:
     }
 
     // Returns nullptr for CLEAR (no pattern). TallyState::NONE = LED off.
-    static const AlertPatternConfig* getAlertPattern(DeviceAlertAction action, uint8_t index = 0) {
+    static const AlertPatternConfig* getAlertPattern(DeviceAlertAction action) {
 
         static const TallyState IDENT[][5]  = {
             { TallyState::NONE,     TallyState::NONE,       TallyState::NONE,       TallyState::NONE },
             { TallyState::PREVIEW,  TallyState::PROGRAM,    TallyState::PREVIEW,    TallyState::PROGRAM },
             { TallyState::PROGRAM,  TallyState::PREVIEW,    TallyState::PROGRAM,    TallyState::PREVIEW },
             { TallyState::PROGRAM,  TallyState::NONE,       TallyState::PREVIEW,    TallyState::NONE },
-            { TallyState::NONE,     TallyState::PROGRAM,       TallyState::NONE,    TallyState::PREVIEW },
+            { TallyState::NONE,     TallyState::PROGRAM,    TallyState::NONE,       TallyState::PREVIEW },
         };
-        static const TallyState INFO[][5]   = { 
+        static const TallyState INFO[][5]   = {
             { TallyState::NONE,     TallyState::NONE,       TallyState::NONE,       TallyState::NONE },
             { TallyState::INFO,     TallyState::NONE,       TallyState::INFO,       TallyState::NONE },
             { TallyState::NONE,     TallyState::INFO,       TallyState::NONE,       TallyState::INFO },
-            { TallyState::INFO,     TallyState::NONE,       TallyState::INFO,       TallyState::NONE },
-            { TallyState::NONE,     TallyState::INFO,       TallyState::NONE,       TallyState::INFO },
         };
-        static const TallyState NORMAL[][5] = { 
+        static const TallyState NORMAL[][5] = {
             { TallyState::NONE,     TallyState::NONE,       TallyState::NONE,       TallyState::NONE },
             { TallyState::WARNING,  TallyState::NONE,       TallyState::WARNING,    TallyState::NONE },
             { TallyState::NONE,     TallyState::WARNING,    TallyState::NONE,       TallyState::WARNING },
-
         };
-        static const TallyState PRIO[][5]   = { 
+        static const TallyState PRIO[][5]   = {
             { TallyState::NONE,     TallyState::NONE,       TallyState::NONE,       TallyState::NONE },
             { TallyState::PROGRAM,  TallyState::WARNING,    TallyState::PROGRAM,    TallyState::WARNING },
             { TallyState::WARNING,  TallyState::PROGRAM,    TallyState::WARNING,    TallyState::PROGRAM },
@@ -107,10 +124,10 @@ private:
         };
 
         static const AlertPatternConfig PATTERNS[] = {
-            { 400, IDENT[index],  2 },
-            { 300, INFO[index],   4 },
-            { 400, NORMAL[index], 2 },
-            { 150, PRIO[index],   2 },
+            { 400, IDENT,  4, 5 },
+            { 300, INFO,   4, 3 },
+            { 400, NORMAL, 4, 3 },
+            { 150, PRIO,   4, 5 },
         };
 
         switch (action) {

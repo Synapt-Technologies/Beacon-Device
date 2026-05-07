@@ -12,6 +12,8 @@ public:
     // Sets all LEDs regardless of target
     virtual void setState(const TallyState state) {
         this->_state = state;
+
+        if (_alertTask) return;
         this->applyState(state);
     }
 

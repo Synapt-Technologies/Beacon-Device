@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CYD Satelite</title>
+<link rel="stylesheet" href="/ui.css">
+</head>
+<body>
+<main class="app">
+<header class="app-header">
+  <h1>CYD Satelite</h1>
+  <div id="status">Loading...</div>
+</header>
+<div id="reboot_alert" class="alert">
+  <span>Reboot required to apply pending layout changes.</span>
+  <button class="reboot-btn" onclick="rebootDevice()">Reboot now</button>
+</div>
+
+<section class="panel">
+<h2>Device</h2>
+<label>Name</label>
+<input id="device_name" type="text" maxlength="31">
+<label>LED Brightness <span id="bright-val">255</span></label>
+<input id="led_brightness" type="range" min="0" max="255" value="255"
+       oninput="document.getElementById('bright-val').textContent=this.value">
+<button onclick="saveSection('device')">Save Device</button>
+</section>
+
+<section class="panel">
+<h2>WiFi</h2>
+<label>Network</label>
+<select id="wifi_ssid_sel" onchange="document.getElementById('wifi_ssid').value=this.value">
+  <option value="">-- scan results --</option>
+</select>
+<label>SSID (manual)</label>
+<input id="wifi_ssid" type="text" maxlength="63">
+<label>Password</label>
+<input id="wifi_pass" type="password" maxlength="63" placeholder="leave blank to keep current">
+<div class="btn-row">
+  <button class="scan-btn" onclick="scan()">Scan</button>
+  <button onclick="saveSection('wifi')">Save WiFi</button>
+</div>
+</section>
+
+<section class="panel">
+<h2>MQTT Broker</h2>
+<label>Broker URL</label>
+<input id="mqtt_url" type="text" placeholder="mqtt://192.168.1.100" maxlength="127">
+<button onclick="saveSection('mqtt')">Save MQTT</button>
+</section>
+
+<section class="panel">
+<h2>Beacon Identity</h2>
+<label>Consumer ID</label>
+<input id="consumer_id" type="text" placeholder="aedes" maxlength="31" oninput="updateTopic()">
+<label>Device ID</label>
+<input id="device_id" type="text" placeholder="leave blank to use MAC" maxlength="47" oninput="updateTopic()">
+<p class="hint">Leave Device ID blank to use the WiFi MAC address.</p>
+<label>Tally topic (derived)</label>
+<code id="derived_topic">tally/device/.../...</code>
+<button onclick="saveSection('beacon')">Save Beacon</button>
+</section>
+
+<section class="panel">
+<h2>LED Layout</h2>
+<label>Layout descriptor</label>
+<textarea id="led_layout" rows="3"></textarea>
+<p class="hint">
+  Format: <b>F=&lt;target&gt;</b> for fixed LED, <b>S=&lt;start&gt;,&lt;count&gt;,&lt;target&gt;</b> for strip sections.<br>
+  Targets: OPERATOR | TALENT | ALL | NONE - separated by semicolons.<br>
+  Example: <code class="code-inline">F=OPERATOR;S=0,11,TALENT;S=11,10,OPERATOR</code>
+</p>
+<button onclick="saveSection('layout')">Save Layout</button>
+</section>
+
+<div id="msg"></div>
+</main>
+<script src="/ui.js"></script>
+</body>
+</html>

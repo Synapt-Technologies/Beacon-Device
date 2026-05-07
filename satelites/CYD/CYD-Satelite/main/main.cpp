@@ -86,7 +86,9 @@ extern "C" void app_main()
     IBeaconConnection* beacon = new TcpMqttBeaconConnection(mqttUrl);
 
     static StripSection ws2812Sections[] = {
-        { 0, 0, DeviceAlertTarget::ALL },
+        { 0, 1, DeviceAlertTarget::ALL },
+        { 16, 0, DeviceAlertTarget::ALL },
+        { 54, 2, DeviceAlertTarget::ALL },
     };
     IConsumer* consumer1 = new WS2812Consumer(createLedStrip(), ADD_LED_STRIP_LED_NUMBER, ws2812Sections, 1);
     IConsumer* consumer2 = new SimpleRGBConsumer(FIX_LED_R_GPIO, FIX_LED_G_GPIO, FIX_LED_B_GPIO, DeviceAlertTarget::OPERATOR);

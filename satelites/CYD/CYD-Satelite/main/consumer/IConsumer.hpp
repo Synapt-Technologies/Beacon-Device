@@ -4,6 +4,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <stdint.h>
+#include <cmath>
 
 class IConsumer {
 public:
@@ -32,13 +33,17 @@ public:
 
 protected:
     uint8_t _brightness = 255;
+    uint8_t _brightnessFloor = 0;
     TallyState _state = TallyState::NONE;
 
     TaskHandle_t _alertTask = {}; 
 
     uint8_t scale_brightness(uint8_t value) const
     {
-        return static_cast<uint8_t>((static_cast<uint16_t>(value) * _brightness) / 255u);
+        uint8_t scaled = static_cast<uint8_t>((static_cast<uint16_t>(value) * _brightness) / 255u);
+        if (scaled == 0) return 0;
+        uint8_t corrected = static_cast<uint8_t>(255.0f * powf(scaled / 255.0f, 2.8f));
+        return corrected < _brightnessFloor ? _brightnessFloor : corrected;
     }
 
     virtual void setColor(uint8_t r, uint8_t g, uint8_t b) = 0;

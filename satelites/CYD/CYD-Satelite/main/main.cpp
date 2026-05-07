@@ -81,9 +81,7 @@ extern "C" void app_main()
     };
     INetworkConnection* network = new StaWifiConnection("CYD_Satellite");
 
-    const char* mqttUrl = "mqtt://192.168.10.15";
-
-    IBeaconConnection* beacon = new TcpMqttBeaconConnection(mqttUrl);
+    IBeaconConnection* beacon = new TcpMqttBeaconConnection();
 
     static StripSection ws2812Sections[] = {
         { 0, 1, DeviceAlertTarget::ALL },

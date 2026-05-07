@@ -8,9 +8,6 @@
 
 class TcpMqttBeaconConnection : public IBeaconConnection {
 public:
-    TcpMqttBeaconConnection(const char* url) {
-        strncpy(_url, url, sizeof(_url) - 1);
-    }
 
     ~TcpMqttBeaconConnection() {
         this->stop();
@@ -42,6 +39,16 @@ public:
         _connected      = false;
         _tallyTopic[0]  = '\0';
         _alertTopic[0]  = '\0';
+    }
+
+    void setBaseAddress(const char* url) override {
+        strncpy(_url, url, sizeof(_url) - 1);
+        _url[sizeof(_url) - 1] = '\0';
+
+        if (_client) {
+            stop();
+            start();
+        }
     }
 
     void setTallyCallback(TallyCb cb) override { _tallyCb = cb; }

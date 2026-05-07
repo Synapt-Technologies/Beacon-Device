@@ -63,6 +63,13 @@ void SateliteOrchestrator::onBeaconChanged(const Settings::Beacon& s)
 {
     ESP_LOGI(TAG, "Beacon settings changed, reconnecting");
 
+    // if (s.mqttUrl[0] != '\0') { // TODO more safeties.
+        _beacon.setBaseAddress(s.mqttUrl);
+    // } else {
+        // _beacon.stop();
+        // return;
+    // }
+
     char consumerId[48];
     if (s.consumerId[0][0] != '\0') {
         strncpy(consumerId, s.consumerId[0], sizeof(consumerId) - 1);

@@ -12,12 +12,13 @@
 namespace {
 constexpr const char* TAG = "CYDDisplay";
 
-constexpr int LCD_PIXEL_CLOCK_HZ      = 80 * 1000 * 1000;
-constexpr int LCD_CMD_BITS            = 8;
-constexpr int LCD_PARAM_BITS          = 8;
-constexpr int LCD_DRAW_BUFFER_LINES   = 80; // double-buffered, 320*80*2 = 50 KB each
+constexpr int LCD_PIXEL_CLOCK_HZ    = 80 * 1000 * 1000;
+constexpr int LCD_CMD_BITS          = 8;
+constexpr int LCD_PARAM_BITS        = 8;
+constexpr int LCD_DRAW_BUFFER_LINES = 80;
 }
 
+// ── Construction / destruction ───────────────────────────────────────
 
 CYDDisplayConsumer::CYDDisplayConsumer() {
     rebuildLut();
@@ -26,19 +27,15 @@ CYDDisplayConsumer::CYDDisplayConsumer() {
 }
 
 CYDDisplayConsumer::~CYDDisplayConsumer() {
-    if (_disp) {
-        lvgl_port_remove_disp(_disp);
-        _disp = nullptr;
-    }
-    if (_panelHandle) esp_lcd_panel_del(_panelHandle);
-    if (_ioHandle)    esp_lcd_panel_io_del(_ioHandle);
+    if (_disp)        { lvgl_port_remove_disp(_disp); _disp = nullptr; }
+    if (_panelHandle) { esp_lcd_panel_del(_panelHandle); }
+    if (_ioHandle)    { esp_lcd_panel_io_del(_ioHandle); }
     spi_bus_free(CYD_SPI_HOST);
 }
 
-// ── LVGL / display init ──────────────────────────────────────────────
+// ── Hardware / LVGL init ─────────────────────────────────────────────
 
 void CYDDisplayConsumer::initLvgl() {
-    // Backlight on (active high on CYD).
     gpio_config_t bl = {
         .pin_bit_mask = 1ULL << CYD_PIN_BL,
         .mode         = GPIO_MODE_OUTPUT,
@@ -47,111 +44,95 @@ void CYDDisplayConsumer::initLvgl() {
         .intr_type    = GPIO_INTR_DISABLE,
     };
     ESP_ERROR_CHECK(gpio_config(&bl));
-    ESP_ERROR_CHECK(gpio_set_level(static_cast<gpio_num_t>(CYD_PIN_BL), 1));
+    ESP_ERROR_CHECK(gpio_set_level((gpio_num_t)CYD_PIN_BL, 1));
 
-    // SPI bus.
-    spi_bus_config_t buscfg = {};
-    buscfg.mosi_io_num     = CYD_PIN_MOSI;
-    buscfg.miso_io_num     = -1;
-    buscfg.sclk_io_num     = CYD_PIN_SCLK;
-    buscfg.quadwp_io_num   = -1;
-    buscfg.quadhd_io_num   = -1;
-    buscfg.max_transfer_sz = CYD_LCD_W * LCD_DRAW_BUFFER_LINES * sizeof(uint16_t) * 2; // *2 for double-buffer
-    ESP_ERROR_CHECK(spi_bus_initialize(CYD_SPI_HOST, &buscfg, SPI_DMA_CH_AUTO));
+    spi_bus_config_t bus = {};
+    bus.mosi_io_num     = CYD_PIN_MOSI;
+    bus.miso_io_num     = -1;
+    bus.sclk_io_num     = CYD_PIN_SCLK;
+    bus.quadwp_io_num   = -1;
+    bus.quadhd_io_num   = -1;
+    bus.max_transfer_sz = CYD_LCD_W * LCD_DRAW_BUFFER_LINES * sizeof(uint16_t) * 2;
+    ESP_ERROR_CHECK(spi_bus_initialize(CYD_SPI_HOST, &bus, SPI_DMA_CH_AUTO));
 
-    // Panel IO over SPI.
-    esp_lcd_panel_io_spi_config_t io_cfg = {};
-    io_cfg.cs_gpio_num         = (gpio_num_t)CYD_PIN_CS;
-    io_cfg.dc_gpio_num         = (gpio_num_t)CYD_PIN_DC;
-    io_cfg.spi_mode            = 0;
-    io_cfg.pclk_hz             = LCD_PIXEL_CLOCK_HZ;
-    io_cfg.trans_queue_depth   = 10;
-    io_cfg.lcd_cmd_bits        = LCD_CMD_BITS;
-    io_cfg.lcd_param_bits      = LCD_PARAM_BITS;
+    esp_lcd_panel_io_spi_config_t io = {};
+    io.cs_gpio_num       = (gpio_num_t)CYD_PIN_CS;
+    io.dc_gpio_num       = (gpio_num_t)CYD_PIN_DC;
+    io.spi_mode          = 0;
+    io.pclk_hz           = LCD_PIXEL_CLOCK_HZ;
+    io.trans_queue_depth = 10;
+    io.lcd_cmd_bits      = LCD_CMD_BITS;
+    io.lcd_param_bits    = LCD_PARAM_BITS;
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi(
-        (esp_lcd_spi_bus_handle_t)CYD_SPI_HOST, &io_cfg, &_ioHandle));
+        (esp_lcd_spi_bus_handle_t)CYD_SPI_HOST, &io, &_ioHandle));
 
-    // ILI9341 panel.
-    esp_lcd_panel_dev_config_t panel_cfg = {};
-    panel_cfg.reset_gpio_num = (gpio_num_t)CYD_PIN_RST;
-    panel_cfg.rgb_ele_order  = LCD_RGB_ELEMENT_ORDER_RGB;
-    panel_cfg.bits_per_pixel = 16;
-    ESP_ERROR_CHECK(esp_lcd_new_panel_ili9341(_ioHandle, &panel_cfg, &_panelHandle));
+    esp_lcd_panel_dev_config_t panel = {};
+    panel.reset_gpio_num = (gpio_num_t)CYD_PIN_RST;
+    panel.rgb_ele_order  = LCD_RGB_ELEMENT_ORDER_RGB;
+    panel.bits_per_pixel = 16;
+    ESP_ERROR_CHECK(esp_lcd_new_panel_ili9341(_ioHandle, &panel, &_panelHandle));
 
     ESP_ERROR_CHECK(esp_lcd_panel_reset(_panelHandle));
     ESP_ERROR_CHECK(esp_lcd_panel_init(_panelHandle));
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(_panelHandle, false));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(_panelHandle, true));
-    // swap_xy / mirror are NOT called here — esp_lvgl_port owns them via disp_cfg.rotation
+    // swap_xy / mirror owned by esp_lvgl_port via disp_cfg.rotation
 
-    // LVGL port (owns the LVGL task + tick).
-    static bool s_lvgl_inited = false;
+    static bool s_lvgl_inited = false; // singleton — lvgl_port is a global resource
     if (!s_lvgl_inited) {
-        lvgl_port_cfg_t port_cfg = ESP_LVGL_PORT_INIT_CONFIG();
-        port_cfg.task_priority   = 4;
-        port_cfg.task_stack      = 8 * 1024;
-        port_cfg.timer_period_ms = 5;
-        ESP_ERROR_CHECK(lvgl_port_init(&port_cfg));
+        lvgl_port_cfg_t port = ESP_LVGL_PORT_INIT_CONFIG();
+        port.task_priority   = 4;
+        port.task_stack      = 8 * 1024;
+        port.timer_period_ms = 5;
+        ESP_ERROR_CHECK(lvgl_port_init(&port));
         s_lvgl_inited = true;
     }
 
-    lvgl_port_display_cfg_t disp_cfg = {};
-    disp_cfg.io_handle      = _ioHandle;
-    disp_cfg.panel_handle   = _panelHandle;
-    disp_cfg.buffer_size    = CYD_LCD_W * LCD_DRAW_BUFFER_LINES;
-    disp_cfg.double_buffer  = true;
-    disp_cfg.hres           = CYD_LCD_W;  // 320 — hardware swap_xy gives us landscape
-    disp_cfg.vres           = CYD_LCD_H;  // 240
-    disp_cfg.monochrome     = false;
-    disp_cfg.rotation.swap_xy  = false;    // landscape: port applies this to panel on every flush
-    disp_cfg.rotation.mirror_x = true;   // adjust if text is mirrored: try (true,false) / (false,true) / (false,false)
-    disp_cfg.rotation.mirror_y = false;
-    disp_cfg.flags.buff_dma    = true;    // DMA transfer — CPU-free SPI flush
-    disp_cfg.flags.swap_bytes  = true;
-    _disp = lvgl_port_add_disp(&disp_cfg);
-    if (!_disp) {
-        ESP_LOGE(TAG, "lvgl_port_add_disp failed");
-    }
+    lvgl_port_display_cfg_t disp = {};
+    disp.io_handle         = _ioHandle;
+    disp.panel_handle      = _panelHandle;
+    disp.buffer_size       = CYD_LCD_W * LCD_DRAW_BUFFER_LINES;
+    disp.double_buffer     = true;
+    disp.hres              = CYD_LCD_W;
+    disp.vres              = CYD_LCD_H;
+    disp.monochrome        = false;
+    disp.rotation.swap_xy  = false;
+    disp.rotation.mirror_x = true;
+    disp.rotation.mirror_y = false;
+    disp.flags.buff_dma    = true;
+    disp.flags.swap_bytes  = true;
+    _disp = lvgl_port_add_disp(&disp);
+    if (!_disp) ESP_LOGE(TAG, "lvgl_port_add_disp failed");
 }
 
 void CYDDisplayConsumer::buildUi() {
-    if (lvgl_port_lock(portMAX_DELAY) == false) return;
+    if (!lvgl_port_lock(portMAX_DELAY)) return;
 
     lv_obj_t* scr = lv_display_get_screen_active(_disp);
 
-    _bg = lv_obj_create(scr);
-    lv_obj_remove_style_all(_bg);
-    lv_obj_set_size(_bg, CYD_LCD_W, CYD_LCD_H);
-    lv_obj_set_pos(_bg, 0, 0);
-    lv_obj_set_style_bg_color(_bg, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(_bg, LV_OPA_COVER, 0);
-    lv_obj_clear_flag(_bg, LV_OBJ_FLAG_SCROLLABLE);
+    for (uint8_t i = 0; i < ZONE_COUNT; i++) {
+        const Zone& z  = ZONES[i];
+        _zoneObjs[i]   = lv_obj_create(scr);
+        lv_obj_remove_style_all(_zoneObjs[i]);
+        lv_obj_set_size(_zoneObjs[i], z.w, z.h);
+        lv_obj_set_pos(_zoneObjs[i],  z.x, z.y);
+        lv_obj_set_style_bg_opa(_zoneObjs[i],
+            z.stateColored ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
+        lv_obj_remove_flag(_zoneObjs[i], LV_OBJ_FLAG_SCROLLABLE);
+    }
 
-    _borderL = lv_obj_create(scr);
-    lv_obj_remove_style_all(_borderL);
-    lv_obj_set_size(_borderL, BORDER_THICK, CYD_LCD_H);
-    lv_obj_set_pos(_borderL, 0, 0);
-    lv_obj_set_style_bg_opa(_borderL, LV_OPA_TRANSP, 0);
-    lv_obj_clear_flag(_borderL, LV_OBJ_FLAG_SCROLLABLE);
+    // Labels render above zones (created later = higher z-order in LVGL).
+    _labels[0] = lv_label_create(scr);
+    lv_obj_set_style_text_font(_labels[0], &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(_labels[0], lv_color_white(), 0);
+    lv_label_set_text(_labels[0], "");
+    lv_obj_align(_labels[0], LV_ALIGN_CENTER, 0, -16);
 
-    _borderR = lv_obj_create(scr);
-    lv_obj_remove_style_all(_borderR);
-    lv_obj_set_size(_borderR, BORDER_THICK, CYD_LCD_H);
-    lv_obj_set_pos(_borderR, CYD_LCD_W - BORDER_THICK, 0);
-    lv_obj_set_style_bg_opa(_borderR, LV_OPA_TRANSP, 0);
-    lv_obj_clear_flag(_borderR, LV_OBJ_FLAG_SCROLLABLE);
-
-    _title = lv_label_create(scr);
-    lv_obj_set_style_text_font(_title, &lv_font_montserrat_28, 0);
-    lv_obj_set_style_text_color(_title, lv_color_white(), 0);
-    lv_label_set_text(_title, "");
-    lv_obj_align(_title, LV_ALIGN_CENTER, 0, -20);
-
-    _subtext = lv_label_create(scr);
-    lv_obj_set_style_text_font(_subtext, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(_subtext, lv_color_white(), 0);
-    lv_label_set_text(_subtext, "");
-    lv_obj_align(_subtext, LV_ALIGN_CENTER, 0, 24);
+    _labels[1] = lv_label_create(scr);
+    lv_obj_set_style_text_font(_labels[1], &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(_labels[1], lv_color_make(160, 160, 160), 0);
+    lv_label_set_text(_labels[1], "");
+    lv_obj_align(_labels[1], LV_ALIGN_CENTER, 0, 20);
 
     lvgl_port_unlock();
 }
@@ -159,103 +140,63 @@ void CYDDisplayConsumer::buildUi() {
 // ── IConsumer overrides ──────────────────────────────────────────────
 
 void CYDDisplayConsumer::setColor(uint8_t r, uint8_t g, uint8_t b) {
-    if (!_bg) return;
-    if (lvgl_port_lock(portMAX_DELAY) == false) return;
+    if (!_zoneObjs[0] || !lvgl_port_lock(portMAX_DELAY)) return;
 
     const uint8_t sr = scale_brightness(r);
     const uint8_t sg = scale_brightness(g);
     const uint8_t sb = scale_brightness(b);
+    const lv_color_t col = lv_color_make(sr, sg, sb);
 
-    lv_obj_set_style_bg_color(_bg, lv_color_make(sr, sg, sb), 0);
-    lv_obj_set_style_bg_opa(_bg, LV_OPA_COVER, 0);
+    for (uint8_t i = 0; i < ZONE_COUNT; i++) {
+        if (ZONES[i].stateColored)
+            lv_obj_set_style_bg_color(_zoneObjs[i], col, 0);
+    }
+    lv_obj_set_style_text_color(_labels[0], contrastTextColor(sr, sg, sb), 0);
 
-    lv_color_t txt = contrastTextColor(sr, sg, sb);
-    lv_obj_set_style_text_color(_title, txt, 0);
-    lv_obj_set_style_text_color(_subtext, txt, 0);
-
-    // Borders cleared whenever no alert is active (this method is called
-    // by applyState() after an alert ends).
-    if (_alertTask == nullptr) {
-        lv_obj_set_style_bg_opa(_borderL, LV_OPA_TRANSP, 0);
-        lv_obj_set_style_bg_opa(_borderR, LV_OPA_TRANSP, 0);
+    if (!_alertTask) {
+        for (uint8_t i = 0; i < ZONE_COUNT; i++)
+            if (!ZONES[i].stateColored)
+                lv_obj_set_style_bg_opa(_zoneObjs[i], LV_OPA_TRANSP, 0);
     }
 
-    if (!_titleOverridden) applyTitleForState(_state);
+    if (!isRevertPending(0)) applySlot(0);
 
     lvgl_port_unlock();
 }
 
-void CYDDisplayConsumer::setText(const char* text, uint8_t index, uint32_t timeout) {
-    if (index >= 2) return;
-    if (lvgl_port_lock(portMAX_DELAY) == false) return;
-
-    lv_obj_t*    label  = (index == 0) ? _title         : _subtext;
-    lv_timer_t** revert = (index == 0) ? &_titleRevert  : &_subtextRevert;
-    bool*        overridden = (index == 0) ? &_titleOverridden : &_subtextOverridden;
-
-    if (*revert) {
-        lv_timer_del(*revert);
-        *revert = nullptr;
-    }
-
-    lv_label_set_text(label, text ? text : "");
-    *overridden = (text != nullptr && text[0] != '\0');
-
-    if (timeout > 0 && *overridden) {
-        *revert = lv_timer_create(
-            (index == 0) ? revertTitleCb : revertSubtextCb,
-            timeout,
-            this);
-        lv_timer_set_repeat_count(*revert, 1);
-    }
-
-    lvgl_port_unlock();
-}
-
-void CYDDisplayConsumer::revertTitleCb(lv_timer_t* t) {
-    auto* self = static_cast<CYDDisplayConsumer*>(lv_timer_get_user_data(t));
-    self->_titleOverridden = false;
-    self->applyTitleForState(self->_state);
-    self->_titleRevert = nullptr;
-}
-
-void CYDDisplayConsumer::revertSubtextCb(lv_timer_t* t) {
-    auto* self = static_cast<CYDDisplayConsumer*>(lv_timer_get_user_data(t));
-    self->_subtextOverridden = false;
-    lv_label_set_text(self->_subtext, "");
-    self->_subtextRevert = nullptr;
-}
-
-void CYDDisplayConsumer::applyTitleForState(TallyState s) {
-    if (_title) lv_label_set_text(_title, stateName(s));
-}
-
-// ── Alerts ───────────────────────────────────────────────────────────
-
-void CYDDisplayConsumer::setAlertStep(DeviceAlertAction action, DeviceAlertTarget target, uint8_t step) {
+void CYDDisplayConsumer::setAlertStep(DeviceAlertAction action,
+                                       DeviceAlertTarget target, uint8_t step) {
     const AlertPatternConfig* cfg = getAlertPattern(action);
-    if (!cfg) return;
-    if (lvgl_port_lock(portMAX_DELAY) == false) return;
-
-    lv_obj_t* bars[ZONE_COUNT] = { _borderL, _borderR };
+    if (!cfg || !lvgl_port_lock(portMAX_DELAY)) return;
 
     for (uint8_t z = 0; z < ZONE_COUNT; z++) {
-        const BorderZone& zone = ZONES[z];
-        if (zone.target != DeviceAlertTarget::ALL
+        if (ZONES[z].target != DeviceAlertTarget::ALL
             && target != DeviceAlertTarget::ALL
-            && zone.target != target) continue;
+            && ZONES[z].target != target) continue;
 
-        uint8_t v = zone.patternVariant % cfg->variantCount;
+        uint8_t v = ZONES[z].alertVariant % cfg->variantCount;
         TallyState s = cfg->patterns[v][step % cfg->patternLen];
 
         if (s == TallyState::NONE) {
-            lv_obj_set_style_bg_opa(bars[z], LV_OPA_TRANSP, 0);
+            if (ZONES[z].stateColored) {
+                uint8_t r, g, b;
+                stateToColor(_state, r, g, b);
+                lv_obj_set_style_bg_color(_zoneObjs[z],
+                    lv_color_make(scale_brightness(r),
+                                  scale_brightness(g),
+                                  scale_brightness(b)), 0);
+                lv_obj_set_style_bg_opa(_zoneObjs[z], LV_OPA_COVER, 0);
+            } else {
+                lv_obj_set_style_bg_opa(_zoneObjs[z], LV_OPA_TRANSP, 0);
+            }
         } else {
             uint8_t r, g, b;
             stateToColor(s, r, g, b);
-            lv_obj_set_style_bg_color(bars[z],
-                lv_color_make(scale_brightness(r), scale_brightness(g), scale_brightness(b)), 0);
-            lv_obj_set_style_bg_opa(bars[z], LV_OPA_COVER, 0);
+            lv_obj_set_style_bg_color(_zoneObjs[z],
+                lv_color_make(scale_brightness(r),
+                              scale_brightness(g),
+                              scale_brightness(b)), 0);
+            lv_obj_set_style_bg_opa(_zoneObjs[z], LV_OPA_COVER, 0);
         }
     }
 
@@ -270,7 +211,45 @@ uint8_t CYDDisplayConsumer::getAlertStepCount(DeviceAlertAction action) {
     return getAlertPattern(action)->patternLen;
 }
 
-const CYDDisplayConsumer::AlertPatternConfig* CYDDisplayConsumer::getAlertPattern(DeviceAlertAction action) {
+// ── ISmartConsumer override ──────────────────────────────────────────
+
+void CYDDisplayConsumer::onTextChanged(uint8_t index, const char* text) {
+    if (index >= 2 || !_labels[index]) return;
+    if (!lvgl_port_lock(portMAX_DELAY)) return;
+    lv_label_set_text(_labels[index], text);
+    lvgl_port_unlock();
+}
+
+// ── Private helpers ──────────────────────────────────────────────────
+
+void CYDDisplayConsumer::applySlot(uint8_t index) {
+    // Call with LVGL lock held.
+    const char* t = (getBaseText(index)[0] != '\0')
+                    ? getBaseText(index)
+                    : (index == 0 ? stateName(_state) : "");
+    lv_label_set_text(_labels[index], t);
+}
+
+const char* CYDDisplayConsumer::stateName(TallyState s) {
+    switch (s) {
+        case TallyState::PROGRAM: return "PROGRAM";
+        case TallyState::PREVIEW: return "PREVIEW";
+        case TallyState::INFO:    return "INFO";
+        case TallyState::WARNING: return "WARNING";
+        case TallyState::DANGER:  return "DANGER";
+        default:                  return "";
+    }
+}
+
+lv_color_t CYDDisplayConsumer::contrastTextColor(uint8_t r, uint8_t g, uint8_t b) {
+    uint16_t y = (r * 299u + g * 587u + b * 114u) / 1000u;
+    return (y > 140) ? lv_color_black() : lv_color_white();
+}
+
+// ── Alert pattern table ──────────────────────────────────────────────
+
+const CYDDisplayConsumer::AlertPatternConfig*
+CYDDisplayConsumer::getAlertPattern(DeviceAlertAction action) {
 
     static const TallyState IDENT[][5]  = {
         { TallyState::NONE,    TallyState::NONE,    TallyState::NONE,    TallyState::NONE },
@@ -280,12 +259,12 @@ const CYDDisplayConsumer::AlertPatternConfig* CYDDisplayConsumer::getAlertPatter
     static const TallyState INFO[][5]   = {
         { TallyState::NONE, TallyState::NONE, TallyState::NONE, TallyState::NONE },
         { TallyState::INFO, TallyState::NONE, TallyState::INFO, TallyState::NONE },
-        { TallyState::INFO, TallyState::NONE, TallyState::INFO, TallyState::NONE },
+        { TallyState::NONE, TallyState::INFO, TallyState::NONE, TallyState::INFO },
     };
     static const TallyState NORMAL[][5] = {
         { TallyState::NONE,    TallyState::NONE,    TallyState::NONE,    TallyState::NONE },
         { TallyState::WARNING, TallyState::NONE,    TallyState::WARNING, TallyState::NONE },
-        { TallyState::WARNING, TallyState::NONE,    TallyState::WARNING, TallyState::NONE },
+        { TallyState::NONE,    TallyState::WARNING, TallyState::NONE,    TallyState::WARNING },
     };
     static const TallyState PRIO[][5]   = {
         { TallyState::NONE,    TallyState::NONE,    TallyState::NONE,    TallyState::NONE },
@@ -307,22 +286,4 @@ const CYDDisplayConsumer::AlertPatternConfig* CYDDisplayConsumer::getAlertPatter
         case DeviceAlertAction::PRIO:   return &PATTERNS[3];
         default:                        return nullptr;
     }
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────
-
-const char* CYDDisplayConsumer::stateName(TallyState s) {
-    switch (s) {
-        case TallyState::PROGRAM: return "PROGRAM";
-        case TallyState::PREVIEW: return "PREVIEW";
-        case TallyState::INFO:    return "INFO";
-        case TallyState::WARNING: return "WARNING";
-        case TallyState::DANGER:  return "DANGER";
-        default:                  return "";
-    }
-}
-
-lv_color_t CYDDisplayConsumer::contrastTextColor(uint8_t r, uint8_t g, uint8_t b) {
-    uint16_t y = static_cast<uint16_t>(r * 299 + g * 587 + b * 114) / 1000;
-    return (y > 140) ? lv_color_black() : lv_color_white();
 }

@@ -11,6 +11,7 @@ idf_component_register(
         "config/NvsSettingsStore.cpp"
         "config/Settings.hpp"
         "consumer/IConsumer.hpp"
+        "consumer/ISmartConsumer.cpp"
         "consumer/SimpleRGBConsumer.hpp"
         "consumer/WS2812Consumer.hpp"
         "consumer/CYDDisplayConsumer.hpp"

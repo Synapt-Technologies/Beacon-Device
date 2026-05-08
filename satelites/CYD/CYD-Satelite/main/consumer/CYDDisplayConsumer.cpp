@@ -124,7 +124,7 @@ void CYDDisplayConsumer::buildUi() {
     }
 
     _labels[0] = lv_label_create(scr);
-    lv_obj_set_style_text_font(_labels[0], &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(_labels[0], &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(_labels[0], lv_color_white(), 0);
     lv_label_set_text(_labels[0], "");
     lv_obj_align(_labels[0], LV_ALIGN_CENTER, 0, -16);
@@ -227,10 +227,7 @@ void CYDDisplayConsumer::onTextChanged(uint8_t index, const char* text) {
 // ── Private helpers ──────────────────────────────────────────────────
 
 void CYDDisplayConsumer::applySlot(uint8_t index) {
-    const char* t = (getBaseText(index)[0] != '\0')
-                    ? getBaseText(index)
-                    : (index == 0 ? stateName(_state) : "");
-    lv_label_set_text(_labels[index], t);
+    lv_label_set_text(_labels[index], getBaseText(index));
 }
 
 lv_color_t CYDDisplayConsumer::contrastTextColor(uint8_t r, uint8_t g, uint8_t b) {

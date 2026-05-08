@@ -160,7 +160,7 @@ void CYDDisplayConsumer::setColor(uint8_t r, uint8_t g, uint8_t b) {
         }
     }
     lv_obj_set_style_text_color(_labels[0], contrastTextColor(sr, sg, sb, 255), 0);
-    lv_obj_set_style_text_color(_labels[1], contrastTextColor(sr, sg, sb, 160), 0);
+    lv_obj_set_style_text_color(_labels[1], contrastTextColor(sr, sg, sb, 100), 0);
 
     if (!isRevertPending(0)) applySlot(0);
 

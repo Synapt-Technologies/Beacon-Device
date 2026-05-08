@@ -140,7 +140,7 @@ private:
         //          event->topic_len, event->topic,
         //          event->data_len, event->data);
 
-        if      (matches(_tallyTopic) || matches(_infoTopic)) onTally(event->data, event->data_len);
+        if      (matches(_tallyTopic)) onTally(event->data, event->data_len);
         else if (matches(_alertTopic)) onAlert(event->data, event->data_len);
         else if (matches(_infoTopic))  onGlobalInfo(event->data, event->data_len);
     }

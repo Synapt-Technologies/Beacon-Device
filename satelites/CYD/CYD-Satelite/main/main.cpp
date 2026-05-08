@@ -93,13 +93,13 @@ extern "C" void app_main()
     IConsumer* consumer2 = new SimpleRGBConsumer(FIX_LED_R_GPIO, FIX_LED_G_GPIO, FIX_LED_B_GPIO, DeviceAlertTarget::OPERATOR);
 
     static const IDisplayConsumer::Zone cydZones[] = {
-        {   0,   0,    320, 240,  0, DeviceAlertTarget::TALENT,    TallyState::NONE, true  }, // background (always visible)
-        {   0,   0,     40, 240,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
-        {  40,   0,    120,  10,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
-        {  40,   220,  120,  10,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
-        { 280,   0,     40,  240, 2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // right alert bar
-        { 160,   0,     130, 10,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // right alert bar
-        { 160,   220,   130, 10,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
+        {   0,   0,     320, 240,  0, DeviceAlertTarget::TALENT,    TallyState::NONE, true  }, // background (always visible)
+        {   0,   0,      40, 240,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
+        {  40,   0,     120,  10,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
+        {  40,   230,   120,  10,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
+        { 280,   0,      40,  240, 2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // right alert bar
+        { 160,   0,     120, 10,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // right alert bar
+        { 160,   230,   120, 10,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
     };
     IDisplayConsumer* consumer3 = new CYDDisplayConsumer(cydZones, 7);
 

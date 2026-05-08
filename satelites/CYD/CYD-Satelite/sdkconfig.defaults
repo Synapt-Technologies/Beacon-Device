@@ -1,0 +1,12 @@
+# App partition — LVGL + esp_lvgl_port push binary past the default 1 MB limit
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
+
+# Use LVGL Kconfig settings instead of lv_conf.h
+CONFIG_LV_CONF_SKIP=y
+
+# Fonts used by CYDDisplayConsumer
+CONFIG_LV_FONT_MONTSERRAT_16=y
+CONFIG_LV_FONT_MONTSERRAT_28=y
+
+# Bump FreeRTOS tick to 1 ms so esp_lvgl_port 5 ms timer is accurate
+CONFIG_FREERTOS_HZ=1000

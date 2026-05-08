@@ -22,6 +22,7 @@
 #include "beaconConnection/TcpMqttBeaconConnection.hpp"
 #include "consumer/SimpleRGBConsumer.hpp"
 #include "consumer/WS2812Consumer.hpp"
+#include "consumer/CYDDisplayConsumer.hpp"
 #include "httpServer/EspHttpServer.hpp"
 
 #include "orchestrator/SateliteOrchestrator.hpp"
@@ -77,7 +78,7 @@ extern "C" void app_main()
     DeviceProfile profile = DeviceProfile{
         .deviceType = DeviceType::SINGLE_TOPIC,
         .model = "CYD Satellite",
-        .consumerCount = 2,
+        .consumerCount = 3,
     };
     INetworkConnection* network = new StaWifiConnection("CYD_Satellite");
 
@@ -90,8 +91,9 @@ extern "C" void app_main()
     };
     IConsumer* consumer1 = new WS2812Consumer(createLedStrip(), ADD_LED_STRIP_LED_NUMBER, ws2812Sections, 3);
     IConsumer* consumer2 = new SimpleRGBConsumer(FIX_LED_R_GPIO, FIX_LED_G_GPIO, FIX_LED_B_GPIO, DeviceAlertTarget::OPERATOR);
+    IConsumer* consumer3 = new CYDDisplayConsumer();
 
-    IConsumer* consumers[] = { consumer1, consumer2 };
+    IConsumer* consumers[] = { consumer1, consumer2, consumer3 };
 
     EspHttpServer httpServer = EspHttpServer();
 

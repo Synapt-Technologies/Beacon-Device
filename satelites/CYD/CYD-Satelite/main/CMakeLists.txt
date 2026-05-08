@@ -13,6 +13,8 @@ idf_component_register(
         "consumer/IConsumer.hpp"
         "consumer/SimpleRGBConsumer.hpp"
         "consumer/WS2812Consumer.hpp"
+        "consumer/CYDDisplayConsumer.hpp"
+        "consumer/CYDDisplayConsumer.cpp"
         "httpServer/EspHttpServer.hpp"
         "httpServer/EspHttpServer.cpp"
         "httpServer/HttpHandlers.hpp"
@@ -36,11 +38,15 @@ idf_component_register(
         "beacon_app.cpp"
     INCLUDE_DIRS "."
     REQUIRES
-        esp_driver_gpio led_strip
+        esp_driver_gpio esp_driver_spi esp_lcd led_strip
         mqtt esp_netif esp_wifi nvs_flash
         esp_http_server cjson
+        lvgl__lvgl
+        espressif__esp_lcd_ili9341
+        espressif__esp_lvgl_port
     EMBED_TXTFILES
         "ui/index.html"
         "ui/ui.css"
         "ui/ui.js"
 )
+

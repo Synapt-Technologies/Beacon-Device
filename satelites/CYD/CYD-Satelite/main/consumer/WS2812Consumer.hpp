@@ -113,12 +113,12 @@ private:
         static const TallyState INFO[][5]   = {
             { TallyState::NONE,     TallyState::NONE,       TallyState::NONE,       TallyState::NONE },
             { TallyState::INFO,     TallyState::NONE,       TallyState::INFO,       TallyState::NONE },
-            { TallyState::NONE,     TallyState::INFO,       TallyState::NONE,       TallyState::INFO },
+            { TallyState::INFO,     TallyState::NONE,       TallyState::INFO,       TallyState::NONE },
         };
         static const TallyState NORMAL[][5] = {
             { TallyState::NONE,     TallyState::NONE,       TallyState::NONE,       TallyState::NONE },
             { TallyState::WARNING,  TallyState::NONE,       TallyState::WARNING,    TallyState::NONE },
-            { TallyState::NONE,     TallyState::WARNING,    TallyState::NONE,       TallyState::WARNING },
+            { TallyState::WARNING,  TallyState::NONE,       TallyState::WARNING,    TallyState::NONE },
         };
         static const TallyState PRIO[][5]   = {
             { TallyState::NONE,     TallyState::NONE,       TallyState::NONE,       TallyState::NONE },

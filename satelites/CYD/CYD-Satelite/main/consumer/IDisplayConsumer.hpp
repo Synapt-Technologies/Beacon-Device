@@ -20,6 +20,8 @@ public:
 
     virtual ~IDisplayConsumer();
 
+    IDisplayConsumer* asDisplay() override { return this; }
+
     // Non-virtual. timeout==0 stores as permanent base; timeout>0 shows temporarily then reverts.
     void setText(const char* text, uint8_t index, uint32_t timeout = 0);
 

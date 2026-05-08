@@ -1,5 +1,6 @@
 #include "orchestrator/SateliteOrchestrator.hpp"
 #include "networkConnection/IWifiConnection.hpp"
+#include "consumer/IDisplayConsumer.hpp"
 
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -23,6 +24,9 @@ void SateliteOrchestrator::start()
     );
     _beacon.setAlertCallback(
         [this](DeviceAlertAction a, DeviceAlertTarget t, uint32_t ms) { applyAlert(a, t, ms); }
+    );
+    _beacon.setNameCallback(
+        [this](const char* s, const char* l) { applyName(s, l); }
     );
 
     _network.setConnectionCallback( // TODO Check if needed. For the ui? Should it be stored in the INetworkConnection implementation?
@@ -120,6 +124,17 @@ void SateliteOrchestrator::applyAlert(DeviceAlertAction action,
     ESP_LOGI(TAG, "Applying alert: %d", static_cast<int>(action));
     for (int i = 0; i < _consumerCount; i++) {
         _consumers[i]->setAlert(action, target, timeout);
+    }
+}
+
+void SateliteOrchestrator::applyName(const char* shortName, const char* longName)
+{
+    ESP_LOGI(TAG, "Applying device name: short=\"%s\" long=\"%s\"", shortName, longName);
+    for (int i = 0; i < _consumerCount; i++) {
+        if (auto* d = _consumers[i]->asDisplay()) {
+            d->setText(shortName, 0, 0);
+            d->setText(longName,  1, 0);
+        }
     }
 }
 

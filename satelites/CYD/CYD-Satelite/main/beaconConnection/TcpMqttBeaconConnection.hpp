@@ -184,16 +184,19 @@ private:
             char shortName[64] = {};
             char longName[64]  = {};
 
-            const char* shortKey = "\"short\":\"";
-            const char* longKey  = "\"long\":\"";
-            for (int i = 0; i <= len - 14; i++) {
-                if (strncmp(data + i, shortKey, 13) == 0) {
-                    const char* p = data + i + 13;
+            static constexpr char shortKey[] = "\"short\":\"";
+            static constexpr char longKey[]  = "\"long\":\"";
+            static constexpr int  shortKeyLen = sizeof(shortKey) - 1;
+            static constexpr int  longKeyLen  = sizeof(longKey)  - 1;
+
+            for (int i = 0; i < len; i++) {
+                if (i + shortKeyLen <= len && strncmp(data + i, shortKey, shortKeyLen) == 0) {
+                    const char* p = data + i + shortKeyLen;
                     int j = 0;
                     while (p + j < data + len && p[j] != '"' && j < 63)
                         shortName[j] = p[j], j++;
-                } else if (strncmp(data + i, longKey, 12) == 0) {
-                    const char* p = data + i + 12;
+                } else if (i + longKeyLen <= len && strncmp(data + i, longKey, longKeyLen) == 0) {
+                    const char* p = data + i + longKeyLen;
                     int j = 0;
                     while (p + j < data + len && p[j] != '"' && j < 63)
                         longName[j] = p[j], j++;

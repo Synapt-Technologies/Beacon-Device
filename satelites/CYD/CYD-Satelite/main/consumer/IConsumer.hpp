@@ -6,9 +6,13 @@
 #include <stdint.h>
 #include <cmath>
 
+class IDisplayConsumer; // forward declaration for asDisplay()
+
 class IConsumer {
 public:
     virtual ~IConsumer() = default;
+
+    virtual IDisplayConsumer* asDisplay() { return nullptr; }
 
     // Sets all LEDs regardless of target
     virtual void setState(const TallyState state) {

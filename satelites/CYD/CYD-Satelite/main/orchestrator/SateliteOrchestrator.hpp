@@ -28,6 +28,7 @@ private:
 
     void applyTally(TallyState state);
     void applyAlert(DeviceAlertAction action, DeviceAlertTarget target, uint32_t timeout);
+    void applyName(const char* shortName, const char* longName);
     void applyDisplay(const Settings::Display& s);
 
     void registerHttpHandlers();

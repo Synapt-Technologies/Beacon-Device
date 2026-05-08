@@ -95,13 +95,13 @@ extern "C" void app_main()
     static const IDisplayConsumer::Zone cydZones[] = {
         {   0,   0,    320, 240,  0, DeviceAlertTarget::TALENT,    TallyState::NONE, true  }, // background (always visible)
         {   0,   0,     40, 240,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
-        {  40,   0,    80,  40,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
-        {  40,   200,  80,  40,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
-        { 280,   0,    40, 240,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // right alert bar
-        { 121,   0,    80, 40,   2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // right alert bar
-        { 121,   200,  80,  40,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
+        {  40,   0,    120,  10,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
+        {  40,   220,  120,  10,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
+        { 280,   0,     40,  240, 2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // right alert bar
+        { 160,   0,     130, 10,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // right alert bar
+        { 160,   220,   130, 10,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
     };
-    IDisplayConsumer* consumer3 = new CYDDisplayConsumer(cydZones, 3);
+    IDisplayConsumer* consumer3 = new CYDDisplayConsumer(cydZones, 7);
 
     consumer3->setText("CYD1", 0); 
     consumer3->setText("CYD Satellite", 1);

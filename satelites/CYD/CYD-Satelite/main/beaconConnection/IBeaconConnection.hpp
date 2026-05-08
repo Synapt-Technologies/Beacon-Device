@@ -12,13 +12,14 @@ class IBeaconConnection {
 public:
     using TallyCb = std::function<void(TallyState state)>;
     using AlertCb = std::function<void(DeviceAlertAction action, DeviceAlertTarget target, uint32_t timeout)>;
+    using NameCb  = std::function<void(const char* shortName, const char* longName)>;
 
     virtual ~IBeaconConnection() = default;
 
     virtual void start() = 0;
     virtual void stop() = 0;
 
-    virtual bool isConnected() const {
+    bool isConnected() const {
         return _connected && (xTaskGetTickCount() - _lastKeepAlive) < pdMS_TO_TICKS(_aliveTimeout);
     };
 
@@ -38,15 +39,16 @@ public:
         updateSubscriptions();
     }
 
-    virtual void setTallyCallback(TallyCb cb) = 0;
-    virtual void setAlertCallback(AlertCb cb) = 0;
+    void setTallyCallback(TallyCb cb) { _tallyCb = cb; }
+    void setAlertCallback(AlertCb cb) { _alertCb = cb; }
+    void setNameCallback(NameCb cb) { _nameCb = cb; }
 
-    virtual void getConsumerAddress(char* out, int len) const {
+    void getConsumerAddress(char* out, int len) const {
         strncpy(out, _consumer, len - 1);
         out[len - 1] = '\0';
     }
 
-    virtual void getDeviceAddress(char* out, int len) const {
+    void getDeviceAddress(char* out, int len) const {
         strncpy(out, _device, len - 1);
         out[len - 1] = '\0';
     }
@@ -54,7 +56,7 @@ public:
 protected:
     TallyCb _tallyCb;
     AlertCb _alertCb;
-
+    NameCb  _nameCb;
     char _consumer[64] = "aedes";
     char _device[64]   = {};
 

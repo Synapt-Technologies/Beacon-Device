@@ -51,8 +51,6 @@ public:
         }
     }
 
-    void setTallyCallback(TallyCb cb) override { _tallyCb = cb; }
-    void setAlertCallback(AlertCb cb) override { _alertCb = cb; }
 
 private:
     static constexpr char TAG[]       = "TcpMqtt";
@@ -76,7 +74,7 @@ private:
         else
             ESP_LOGI(TAG, "Subscribed to %s", _infoTopic);
 
-        if (_tallyCb) {
+        if (_tallyCb || _nameCb) { // TODO: Check if name/info need a separate topic. Currently they are sent together with the tally state.
             if (esp_mqtt_client_subscribe(_client, _tallyTopic, 0) < 0)
                 ESP_LOGW(TAG, "Failed to subscribe to %s", _tallyTopic);
             else
@@ -142,7 +140,7 @@ private:
         //          event->topic_len, event->topic,
         //          event->data_len, event->data);
 
-        if      (matches(_tallyTopic)) onTally(event->data, event->data_len);
+        if      (matches(_tallyTopic) || matches(_infoTopic)) onTally(event->data, event->data_len);
         else if (matches(_alertTopic)) onAlert(event->data, event->data_len);
         else if (matches(_infoTopic))  onGlobalInfo(event->data, event->data_len);
     }
@@ -152,33 +150,60 @@ private:
     }
 
     void onTally(const char* data, int len) {
-        if (!_tallyCb)
-            return;
 
-        TallyState ss = TallyState::NONE;
-        int rawSs = extractInt(data, len, "ss", -1);
-        if (rawSs >= 0) {
-            ss = static_cast<TallyState>(rawSs);
-        } else {
-            char state[16] = {};
-            const char* key = "\"state\":\"";
-            for (int i = 0; i <= len - 9; i++) {
-                if (strncmp(data + i, key, 9) == 0) {
-                    const char* p = data + i + 9;
-                    int j = 0;
-                    while (p + j < data + len && p[j] != '"' && j < 15)
-                        state[j] = p[j], j++;
-                    break;
+        if (_tallyCb) {
+
+            TallyState ss = TallyState::NONE;
+            int rawSs = extractInt(data, len, "ss", -1);
+            if (rawSs >= 0) {
+                ss = static_cast<TallyState>(rawSs);
+            } else {
+                char state[16] = {};
+                const char* key = "\"state\":\"";
+                for (int i = 0; i <= len - 9; i++) {
+                    if (strncmp(data + i, key, 9) == 0) {
+                        const char* p = data + i + 9;
+                        int j = 0;
+                        while (p + j < data + len && p[j] != '"' && j < 15)
+                            state[j] = p[j], j++;
+                        break;
+                    }
                 }
+                if      (strcmp(state, "PROGRAM") == 0) ss = TallyState::PROGRAM;
+                else if (strcmp(state, "DANGER")  == 0) ss = TallyState::DANGER;
+                else if (strcmp(state, "PREVIEW") == 0) ss = TallyState::PREVIEW;
+                else if (strcmp(state, "WARNING") == 0) ss = TallyState::WARNING;
             }
-            if      (strcmp(state, "PROGRAM") == 0) ss = TallyState::PROGRAM;
-            else if (strcmp(state, "DANGER")  == 0) ss = TallyState::DANGER;
-            else if (strcmp(state, "PREVIEW") == 0) ss = TallyState::PREVIEW;
-            else if (strcmp(state, "WARNING") == 0) ss = TallyState::WARNING;
+
+            ESP_LOGI(TAG, "Tally ss=%d", static_cast<int>(ss));
+            
+            _tallyCb(ss);
         }
 
-        ESP_LOGI(TAG, "Tally ss=%d", static_cast<int>(ss));
-        _tallyCb(ss);
+        if (_nameCb) {
+            char shortName[64] = {};
+            char longName[64]  = {};
+
+            const char* shortKey = "\"short\":\"";
+            const char* longKey  = "\"long\":\"";
+            for (int i = 0; i <= len - 14; i++) {
+                if (strncmp(data + i, shortKey, 13) == 0) {
+                    const char* p = data + i + 13;
+                    int j = 0;
+                    while (p + j < data + len && p[j] != '"' && j < 63)
+                        shortName[j] = p[j], j++;
+                } else if (strncmp(data + i, longKey, 12) == 0) {
+                    const char* p = data + i + 12;
+                    int j = 0;
+                    while (p + j < data + len && p[j] != '"' && j < 63)
+                        longName[j] = p[j], j++;
+                }
+            }
+
+            ESP_LOGI(TAG, "Device name: short=\"%s\" long=\"%s\"", shortName, longName);
+
+            _nameCb(shortName, longName);
+        }
     }
 
     void onAlert(const char* data, int len) {

@@ -53,8 +53,12 @@ bool NvsSettingsStore::load(Settings& out)
     if (nvs_get_u8(h, "rt_brightness", &out.runtime.brightness) != ESP_OK) {
         out.runtime.brightness = 255;
     }
+    uint8_t raw = 0;
+    if (nvs_get_u8(h, "rt_st_disc", &raw) == ESP_OK)
+        out.runtime.state_on_disconnect = static_cast<TallyState>(raw);
 
     nvs_close(h);
+    
     ESP_LOGI(TAG, "Loaded: ssid='%s' url='%s' consumer='%s'...",
              out.network.ssid, out.beacon.mqttUrl, out.beacon.consumerId[0]);
     return true;
@@ -86,6 +90,7 @@ bool NvsSettingsStore::save(const Settings& in)
     if (err == ESP_OK) err = nvs_set_str(h, "rt_name_short", in.runtime.name[0].shortName);
     if (err == ESP_OK) err = nvs_set_str(h, "rt_name_long",  in.runtime.name[0].longName);
     if (err == ESP_OK) err = nvs_set_u8(h,  "rt_brightness", in.runtime.brightness);
+    if (err == ESP_OK) err = nvs_set_u8(h,  "rt_st_disc", static_cast<uint8_t>(in.runtime.state_on_disconnect));
 
     if (err == ESP_OK) err = nvs_commit(h);
 

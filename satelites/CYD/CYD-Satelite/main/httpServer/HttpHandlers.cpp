@@ -90,20 +90,20 @@ esp_err_t HttpHandlers::handleGetDevice(httpd_req_t* req)
 esp_err_t HttpHandlers::handleGetConfig(httpd_req_t* req) // TODO add runtime config
 {
     auto*           ctx = static_cast<HttpCtx*>(req->user_ctx);
-    const Settings& s   = ctx->config.get();
-    const int       n   = ctx->profile.consumerCount;
+    const Settings& s  = ctx->config.get();
+    const int       cn = ctx->profile.consumerCount;
+    const int       bn = ctx->profile.deviceType == DeviceType::SINGLE_TOPIC ? 1 : ctx->profile.consumerCount;
 
     cJSON* root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "deviceName", s.deviceName);
 
     cJSON* network = cJSON_AddObjectToObject(root, "network");
     cJSON_AddStringToObject(network, "ssid",     s.network.ssid);
-    cJSON_AddStringToObject(network, "password", s.network.password);
 
     cJSON* beacon = cJSON_AddObjectToObject(root, "beacon");
     cJSON_AddStringToObject(beacon, "mqttUrl", s.beacon.mqttUrl);
     cJSON* consumers = cJSON_AddArrayToObject(beacon, "consumers");
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < bn; i++) {
         cJSON* c = cJSON_CreateObject();
         cJSON_AddStringToObject(c, "consumerId", s.beacon.consumerId[i]);
         cJSON_AddStringToObject(c, "deviceId",   s.beacon.deviceId[i]);
@@ -113,11 +113,21 @@ esp_err_t HttpHandlers::handleGetConfig(httpd_req_t* req) // TODO add runtime co
     cJSON* display     = cJSON_AddObjectToObject(root, "display");
     cJSON* brightness  = cJSON_AddArrayToObject(display, "brightness");
     cJSON* alertTarget = cJSON_AddArrayToObject(display, "alertTarget");
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < cn; i++) {
         cJSON_AddItemToArray(brightness,   cJSON_CreateNumber(s.display.brightness[i]));
         cJSON_AddItemToArray(alertTarget,  cJSON_CreateNumber(static_cast<int>(s.display.alertTarget[i])));
     }
 
+    cJSON* runtime     = cJSON_AddObjectToObject(root, "runtime");
+    cJSON_AddNumberToObject(runtime, "master_brightness", s.runtime.brightness);
+    cJSON_AddNumberToObject(runtime, "state_on_disconnect", static_cast<int>(s.runtime.state_on_disconnect));
+    cJSON* names = cJSON_AddArrayToObject(runtime, "name");
+    for (int i = 0; i < bn; i++) {
+        cJSON* c = cJSON_CreateObject();
+        cJSON_AddStringToObject(c, "short", s.runtime.name[i].shortName);
+        cJSON_AddStringToObject(c, "long",  s.runtime.name[i].longName);
+        cJSON_AddItemToArray(names, c);
+    }
     return sendJson(req, root);
 }
 

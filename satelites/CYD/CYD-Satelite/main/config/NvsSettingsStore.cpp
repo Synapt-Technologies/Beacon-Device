@@ -42,12 +42,6 @@ bool NvsSettingsStore::load(Settings& out)
             out.display.brightness[i] = brightness;
     }
 
-    for (int i = 0; i < (int)(sizeof(out.display.alertTarget) / sizeof(out.display.alertTarget[0])); i++) {
-        uint8_t raw = 0;
-        if (nvs_get_u8(h, make_key(key, sizeof(key), "alertTarget_", static_cast<size_t>(i)), &raw) == ESP_OK)
-            out.display.alertTarget[i] = static_cast<DeviceAlertTarget>(raw);
-    }
-
     str("rt_name_short",  out.runtime.name[0].shortName, sizeof(out.runtime.name[0].shortName));
     str("rt_name_long",   out.runtime.name[0].longName,  sizeof(out.runtime.name[0].longName));
     if (nvs_get_u8(h, "rt_brightness", &out.runtime.brightness) != ESP_OK) {
@@ -83,9 +77,6 @@ bool NvsSettingsStore::save(const Settings& in)
 
     for (int i = 0; i < (int)(sizeof(in.display.brightness) / sizeof(in.display.brightness[0])) && err == ESP_OK; i++)
         err = nvs_set_u8(h, make_key(key, sizeof(key), "brightness_", static_cast<size_t>(i)), in.display.brightness[i]);
-
-    for (int i = 0; i < (int)(sizeof(in.display.alertTarget) / sizeof(in.display.alertTarget[0])) && err == ESP_OK; i++)
-        err = nvs_set_u8(h, make_key(key, sizeof(key), "alertTarget_", static_cast<size_t>(i)), static_cast<uint8_t>(in.display.alertTarget[i]));
 
     if (err == ESP_OK) err = nvs_set_str(h, "rt_name_short", in.runtime.name[0].shortName);
     if (err == ESP_OK) err = nvs_set_str(h, "rt_name_long",  in.runtime.name[0].longName);

@@ -18,12 +18,7 @@ struct Settings {
 
     struct Display {
         uint8_t           brightness[8]   = {255, 255, 255, 255, 255, 255, 255, 255};
-        DeviceAlertTarget alertTarget[8]  = { // TODO: Currently not implemented, for multi target consumers.
-            DeviceAlertTarget::ALL, DeviceAlertTarget::ALL,
-            DeviceAlertTarget::ALL, DeviceAlertTarget::ALL,
-            DeviceAlertTarget::ALL, DeviceAlertTarget::ALL,
-            DeviceAlertTarget::ALL, DeviceAlertTarget::ALL,
-        };
+        // TODO: Add some sort of alert target / flip here?
     } display;
 
     struct Runtime { // TODO: Server side loading and saving of this, and UI to edit it

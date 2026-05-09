@@ -112,10 +112,8 @@ esp_err_t HttpHandlers::handleGetConfig(httpd_req_t* req) // TODO add runtime co
 
     cJSON* display     = cJSON_AddObjectToObject(root, "display");
     cJSON* brightness  = cJSON_AddArrayToObject(display, "brightness");
-    cJSON* alertTarget = cJSON_AddArrayToObject(display, "alertTarget");
     for (int i = 0; i < cn; i++) {
         cJSON_AddItemToArray(brightness,   cJSON_CreateNumber(s.display.brightness[i]));
-        cJSON_AddItemToArray(alertTarget,  cJSON_CreateNumber(static_cast<int>(s.display.alertTarget[i])));
     }
 
     cJSON* runtime     = cJSON_AddObjectToObject(root, "runtime");
@@ -210,17 +208,6 @@ esp_err_t HttpHandlers::handleSetConfig(httpd_req_t* req)
                 if (i >= n) break;
                 if (cJSON_IsNumber(val))
                     updated.display.brightness[i] = static_cast<uint8_t>(val->valueint);
-                i++;
-            }
-        }
-        cJSON* alertTarget = cJSON_GetObjectItem(display, "alertTarget");
-        if (cJSON_IsArray(alertTarget)) {
-            int i = 0;
-            cJSON* val;
-            cJSON_ArrayForEach(val, alertTarget) {
-                if (i >= n) break;
-                if (cJSON_IsNumber(val))
-                    updated.display.alertTarget[i] = static_cast<DeviceAlertTarget>(val->valueint);
                 i++;
             }
         }

@@ -161,6 +161,9 @@ void SateliteOrchestrator::applyAlert(DeviceAlertAction action,
 
 void SateliteOrchestrator::onNetworkStatus(NetworkStatus status, esp_ip4_addr_t ip)
 {
+
+    ESP_LOGI(TAG, "Network status changed: %d", static_cast<int>(status));
+
     _networkStatus = status;
     this->_networkIp = ip;
 

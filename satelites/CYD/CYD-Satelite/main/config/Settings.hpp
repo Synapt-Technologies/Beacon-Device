@@ -32,6 +32,7 @@ struct Settings {
             char shortName[32] = {};
             char longName[32]  = {};
         } name[8];
+        TallyState state_on_disconnect = TallyState::NONE; 
     } runtime;
 
     char deviceName[32] = "Beacon Satellite";

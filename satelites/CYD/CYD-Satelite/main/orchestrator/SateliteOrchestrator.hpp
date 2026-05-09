@@ -23,12 +23,12 @@ private:
     void onNetworkChanged(const Settings::Network& s);
     void onBeaconChanged (const Settings::Beacon&  s);
     void onDisplayChanged(const Settings::Display& s);
+    void onRuntimeChanged(const Settings::Runtime& s);
 
     void onNetworkStatus(NetworkStatus status, esp_ip4_addr_t ip);
 
     void applyTally(TallyState state);
     void applyAlert(DeviceAlertAction action, DeviceAlertTarget target, uint32_t timeout);
-    void applyName(const char* shortName, const char* longName);
     void applyDisplay(const Settings::Display& s);
 
     void registerHttpHandlers();

@@ -18,6 +18,7 @@ void SateliteOrchestrator::start()
     _config.onNetworkChanged([this](const Settings::Network& s){ onNetworkChanged(s); });
     _config.onBeaconChanged ([this](const Settings::Beacon&  s){ onBeaconChanged(s);  });
     _config.onDisplayChanged([this](const Settings::Display& s){ onDisplayChanged(s); });
+    _config.onRuntimeChanged([this](const Settings::Runtime& s){ onRuntimeChanged(s); });
 
     _beacon.setTallyCallback(
         [this](TallyState state) { applyTally(state); }
@@ -26,7 +27,15 @@ void SateliteOrchestrator::start()
         [this](DeviceAlertAction a, DeviceAlertTarget t, uint32_t ms) { applyAlert(a, t, ms); }
     );
     _beacon.setNameCallback(
-        [this](const char* s, const char* l) { applyName(s, l); }
+        [this](const char* s, const char* l) { 
+            Settings::Runtime r = _config.get().runtime;
+            strncpy(r.name[0].shortName, s, sizeof(r.name[0].shortName) - 1);
+            r.name[0].shortName[sizeof(r.name[0].shortName) - 1] = '\0';
+            strncpy(r.name[0].longName, l, sizeof(r.name[0].longName) - 1);
+            r.name[0].longName[sizeof(r.name[0].longName) - 1] = '\0';
+            
+            _config.applyRuntime(r);
+        }
     );
 
     _network.setConnectionCallback( // TODO Check if needed. For the ui? Should it be stored in the INetworkConnection implementation?
@@ -107,6 +116,24 @@ void SateliteOrchestrator::onDisplayChanged(const Settings::Display& s)
     }
 }
 
+void SateliteOrchestrator::onRuntimeChanged(const Settings::Runtime& s)
+{
+
+    ESP_LOGI(TAG, "Runtime settings changed: Shortname: %s, Longname: %s", s.name[0].shortName, s.name[0].longName);
+
+    // for (int i = 0; i < _consumerCount; i++) { // TODO add master brightness
+    //     _consumers[i]->setBrightness(s.brightness);
+    //     // TODO Add alert target handeling. Not implemented because of multi target consumers.
+    // }
+
+    for (int i = 0; i < _consumerCount; i++) {
+        if (auto* d = _consumers[i]->asDisplay()) {
+            d->setText(s.name[0].shortName, 0, 0);
+            d->setText(s.name[0].longName,  1, 0);
+        }
+    }
+}
+
 // ? Runtime Callbacks
 void SateliteOrchestrator::applyTally(TallyState state)
 {
@@ -127,16 +154,6 @@ void SateliteOrchestrator::applyAlert(DeviceAlertAction action,
     }
 }
 
-void SateliteOrchestrator::applyName(const char* shortName, const char* longName)
-{
-    ESP_LOGI(TAG, "Applying device name: short=\"%s\" long=\"%s\"", shortName, longName);
-    for (int i = 0; i < _consumerCount; i++) {
-        if (auto* d = _consumers[i]->asDisplay()) {
-            d->setText(shortName, 0, 0);
-            d->setText(longName,  1, 0);
-        }
-    }
-}
 
 
 // ? Network Callbacks

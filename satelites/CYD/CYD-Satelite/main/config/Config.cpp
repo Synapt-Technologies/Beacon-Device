@@ -48,6 +48,17 @@ bool Config::apply(const Settings& updated)
     return _store.save(_settings);
 }
 
+
+bool Config::applyRuntime(const Settings::Runtime& runtime)
+{
+    if (memcmp(&_settings.runtime, &runtime, sizeof(Settings::Runtime)) != 0) {
+        _settings.runtime = runtime;
+        if (_runtimeCb) _runtimeCb(_settings.runtime);
+        return _store.save(_settings);
+    }
+    return true; // No change, but still "successful"
+}
+
 void Config::onNetworkChanged(NetworkCb cb) { _networkCb = cb; }
 void Config::onBeaconChanged (BeaconCb  cb) { _beaconCb  = cb; }
 void Config::onDisplayChanged(DisplayCb cb) { _displayCb = cb; }

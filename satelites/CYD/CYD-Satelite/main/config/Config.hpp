@@ -21,6 +21,8 @@ public:
     // Returns false if saving to the store failed.
     bool apply(const Settings& updated);
 
+    bool applyRuntime(const Settings::Runtime& runtime);
+
     void onNetworkChanged(NetworkCb cb);
     void onBeaconChanged (BeaconCb  cb);
     void onDisplayChanged(DisplayCb cb);

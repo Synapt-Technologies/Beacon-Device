@@ -101,10 +101,7 @@ extern "C" void app_main()
         { 160,   0,     120, 10,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // right alert bar
         { 160,   230,   120, 10,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
     };
-    IDisplayConsumer* consumer3 = new CYDDisplayConsumer(cydZones, 7);
-
-    consumer3->setText("CYD1", 0); 
-    consumer3->setText("CYD Satellite", 1);
+    IConsumer* consumer3 = new CYDDisplayConsumer(cydZones, 7);
 
     IConsumer* consumers[] = { consumer1, consumer2, consumer3 };
 

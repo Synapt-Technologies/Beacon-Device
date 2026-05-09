@@ -87,7 +87,7 @@ esp_err_t HttpHandlers::handleGetDevice(httpd_req_t* req)
 
 // ── GET /api/config ───────────────────────────────────────────────────────────
 
-esp_err_t HttpHandlers::handleGetConfig(httpd_req_t* req)
+esp_err_t HttpHandlers::handleGetConfig(httpd_req_t* req) // TODO add runtime config
 {
     auto*           ctx = static_cast<HttpCtx*>(req->user_ctx);
     const Settings& s   = ctx->config.get();

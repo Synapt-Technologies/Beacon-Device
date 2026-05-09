@@ -23,6 +23,7 @@ public:
     void onNetworkChanged(NetworkCb cb);
     void onBeaconChanged (BeaconCb  cb);
     void onDisplayChanged(DisplayCb cb);
+    void onRuntimeChanged(RuntimeCb cb);
 
 private:
     ISettingsStore& _store;
@@ -31,4 +32,5 @@ private:
     NetworkCb _networkCb;
     BeaconCb  _beaconCb;
     DisplayCb _displayCb;
+    RuntimeCb _runtimeCb;
 };

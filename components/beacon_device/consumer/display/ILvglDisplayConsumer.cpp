@@ -59,7 +59,6 @@ void ILvglDisplayConsumer::buildUi() {
         return;
     }
 
-    lv_obj_t* scr = lv_display_get_screen_active(_disp);
     lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
 
     for (uint8_t i = 0; i < _zoneCount; i++) {
@@ -158,12 +157,15 @@ void ILvglDisplayConsumer::setAlertStep(DeviceAlertAction action,
     lvgl_port_unlock();
 }
 
+// TODO: Move to IConsumer?
 uint32_t ILvglDisplayConsumer::getAlertStepLength(DeviceAlertAction action) {
-    return getAlertPattern(action)->speedMs;
+    const AlertPatternConfig* cfg = getAlertPattern(action);
+    return cfg ? cfg->speedMs : 0;
 }
 
 uint8_t ILvglDisplayConsumer::getAlertStepCount(DeviceAlertAction action) {
-    return getAlertPattern(action)->patternLen;
+    const AlertPatternConfig* cfg = getAlertPattern(action);
+    return cfg ? cfg->patternLen : 1;
 }
 
 // ── IDisplayConsumer override ────────────────────────────────────────

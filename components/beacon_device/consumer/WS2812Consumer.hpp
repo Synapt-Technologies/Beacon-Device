@@ -95,12 +95,15 @@ private:
         uint8_t variantCount;
     };
 
+    // TODO: Move to IConsumer?
     uint32_t getAlertStepLength(DeviceAlertAction action) override {
-        return this->getAlertPattern(action)->speedMs;
+        const AlertPatternConfig* cfg = getAlertPattern(action);
+        return cfg ? cfg->speedMs : 0;
     }
 
     uint8_t getAlertStepCount(DeviceAlertAction action) override {
-        return this->getAlertPattern(action)->patternLen;
+        const AlertPatternConfig* cfg = getAlertPattern(action);
+        return cfg ? cfg->patternLen : 1;
     }
 
     // Returns nullptr for CLEAR (no pattern). TallyState::NONE = LED off.

@@ -9,7 +9,7 @@
 #include "esp_lvgl_port.h"
 #include "esp_log.h"
 
-LV_FONT_DECLARE(helvatica_120);
+LV_FONT_DECLARE(helvatica_140);
 
 namespace {
 constexpr const char* TAG = "CYDDisplay";
@@ -127,16 +127,16 @@ void CYDDisplayConsumer::buildUi() {
     }
 
     _labels[0] = lv_label_create(scr);
-    lv_obj_set_style_text_font(_labels[0], &helvatica_120, 0);
+    lv_obj_set_style_text_font(_labels[0], &helvatica_140, 0);
     lv_obj_set_style_text_color(_labels[0], lv_color_white(), 0);
     lv_label_set_text(_labels[0], "");
     lv_obj_align(_labels[0], LV_ALIGN_CENTER, 0, 0);
 
     _labels[1] = lv_label_create(scr);
-    lv_obj_set_style_text_font(_labels[1], &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(_labels[1], &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(_labels[1], lv_color_white(), 0);
     lv_label_set_text(_labels[1], "");
-    lv_obj_align(_labels[1], LV_ALIGN_CENTER, 0, 55);
+    lv_obj_align(_labels[1], LV_ALIGN_CENTER, 0, 70);
 
     lvgl_port_unlock();
 }

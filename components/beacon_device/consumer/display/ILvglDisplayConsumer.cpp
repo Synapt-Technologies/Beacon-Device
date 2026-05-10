@@ -1,118 +1,64 @@
-#include "consumer/CYDDisplayConsumer.hpp"
+#include "consumer/display/ILvglDisplayConsumer.hpp"
 
-#include "driver/gpio.h"
-#include "driver/spi_master.h"
-#include "esp_lcd_panel_io.h"
-#include "esp_lcd_panel_ops.h"
-#include "esp_lcd_panel_vendor.h"
-#include "esp_lcd_ili9341.h"
 #include "esp_lvgl_port.h"
 #include "esp_log.h"
 
-LV_FONT_DECLARE(helvatica_140);
-
 namespace {
-constexpr const char* TAG = "CYDDisplay";
-constexpr int LCD_PIXEL_CLOCK_HZ    = 80 * 1000 * 1000;
-constexpr int LCD_CMD_BITS          = 8;
-constexpr int LCD_PARAM_BITS        = 8;
-constexpr int LCD_DRAW_BUFFER_LINES = 80;
+constexpr const char* TAG = "LvglDisplay";
 }
+
+static bool s_lvgl_inited = false;
 
 // ── Construction / destruction ───────────────────────────────────────
 
-CYDDisplayConsumer::CYDDisplayConsumer(const IDisplayConsumer::Zone* zones, uint8_t zoneCount)
-    : _displayZones(zones), _zoneCount(zoneCount) {
+ILvglDisplayConsumer::ILvglDisplayConsumer(const IDisplayConsumer::Zone* zones, uint8_t zoneCount,
+                                           const lv_font_t* titleFont, const lv_font_t* subtextFont)
+    : _displayZones(zones), _zoneCount(zoneCount),
+      _titleFont(titleFont), _subtextFont(subtextFont)
+{
     _zoneObjs = new lv_obj_t*[_zoneCount]();
     rebuildLut();
-    initLvgl();
-    buildUi();
 }
 
-CYDDisplayConsumer::~CYDDisplayConsumer() {
-    if (_disp)        { lvgl_port_remove_disp(_disp); _disp = nullptr; }
-    if (_panelHandle) { esp_lcd_panel_del(_panelHandle); }
-    if (_ioHandle)    { esp_lcd_panel_io_del(_ioHandle); }
-    spi_bus_free(CYD_SPI_HOST);
+ILvglDisplayConsumer::~ILvglDisplayConsumer() {
+    // _disp must already be removed by the derived destructor (to preserve hardware order).
     delete[] _zoneObjs;
 }
 
-// ── Hardware / LVGL init ─────────────────────────────────────────────
+// ── Protected helpers ────────────────────────────────────────────────
 
-void CYDDisplayConsumer::initLvgl() {
-    gpio_config_t bl = {
-        .pin_bit_mask = 1ULL << CYD_PIN_BL,
-        .mode         = GPIO_MODE_OUTPUT,
-        .pull_up_en   = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type    = GPIO_INTR_DISABLE,
-    };
-    ESP_ERROR_CHECK(gpio_config(&bl));
-    ESP_ERROR_CHECK(gpio_set_level((gpio_num_t)CYD_PIN_BL, 1));
-
-    spi_bus_config_t bus = {};
-    bus.mosi_io_num     = CYD_PIN_MOSI;
-    bus.miso_io_num     = -1;
-    bus.sclk_io_num     = CYD_PIN_SCLK;
-    bus.quadwp_io_num   = -1;
-    bus.quadhd_io_num   = -1;
-    bus.max_transfer_sz = CYD_LCD_W * LCD_DRAW_BUFFER_LINES * sizeof(uint16_t) * 2;
-    ESP_ERROR_CHECK(spi_bus_initialize(CYD_SPI_HOST, &bus, SPI_DMA_CH_AUTO));
-
-    esp_lcd_panel_io_spi_config_t io = {};
-    io.cs_gpio_num       = (gpio_num_t)CYD_PIN_CS;
-    io.dc_gpio_num       = (gpio_num_t)CYD_PIN_DC;
-    io.spi_mode          = 0;
-    io.pclk_hz           = LCD_PIXEL_CLOCK_HZ;
-    io.trans_queue_depth = 10;
-    io.lcd_cmd_bits      = LCD_CMD_BITS;
-    io.lcd_param_bits    = LCD_PARAM_BITS;
-    ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi(
-        (esp_lcd_spi_bus_handle_t)CYD_SPI_HOST, &io, &_ioHandle));
-
-    esp_lcd_panel_dev_config_t panel = {};
-    panel.reset_gpio_num = (gpio_num_t)CYD_PIN_RST;
-    panel.rgb_ele_order  = LCD_RGB_ELEMENT_ORDER_RGB;
-    panel.bits_per_pixel = 16;
-    ESP_ERROR_CHECK(esp_lcd_new_panel_ili9341(_ioHandle, &panel, &_panelHandle));
-
-    ESP_ERROR_CHECK(esp_lcd_panel_reset(_panelHandle));
-    ESP_ERROR_CHECK(esp_lcd_panel_init(_panelHandle));
-    ESP_ERROR_CHECK(esp_lcd_panel_invert_color(_panelHandle, false));
-    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(_panelHandle, true));
-    // swap_xy / mirror are owned by esp_lvgl_port via disp_cfg.rotation
-
-    static bool s_lvgl_inited = false; // singleton: lvgl_port is a global resource
-    if (!s_lvgl_inited) {
-        lvgl_port_cfg_t port = ESP_LVGL_PORT_INIT_CONFIG();
-        port.task_priority   = 4;
-        port.task_stack      = 8 * 1024;
-        port.timer_period_ms = 5;
-        ESP_ERROR_CHECK(lvgl_port_init(&port));
-        s_lvgl_inited = true;
-    }
-
-    lvgl_port_display_cfg_t disp = {};
-    disp.io_handle         = _ioHandle;
-    disp.panel_handle      = _panelHandle;
-    disp.buffer_size       = CYD_LCD_W * LCD_DRAW_BUFFER_LINES;
-    disp.double_buffer     = true;
-    disp.hres              = CYD_LCD_W;
-    disp.vres              = CYD_LCD_H;
-    disp.monochrome        = false;
-    disp.rotation.swap_xy  = false;
-    disp.rotation.mirror_x = true;
-    disp.rotation.mirror_y = false;
-    disp.flags.buff_dma    = true;
-    disp.flags.swap_bytes  = true;
-    _disp = lvgl_port_add_disp(&disp);
-    if (!_disp) ESP_LOGE(TAG, "lvgl_port_add_disp failed");
+void ILvglDisplayConsumer::ensureLvglPortInited() {
+    if (s_lvgl_inited) return;
+    lvgl_port_cfg_t port = ESP_LVGL_PORT_INIT_CONFIG();
+    port.task_priority   = 4;
+    port.task_stack      = 8 * 1024;
+    port.timer_period_ms = 5;
+    ESP_ERROR_CHECK(lvgl_port_init(&port));
+    s_lvgl_inited = true;
 }
 
-void CYDDisplayConsumer::buildUi() {
+void ILvglDisplayConsumer::finishInit(lv_display_t* disp) {
+    _disp = disp;
+    buildUi();
+}
+
+// ── UI construction ──────────────────────────────────────────────────
+
+void ILvglDisplayConsumer::buildUi() {
     if (!lvgl_port_lock(portMAX_DELAY)) return;
 
+    if (!_disp) {
+        ESP_LOGE(TAG, "Skipping UI build because display initialization failed");
+        lvgl_port_unlock();
+        return;
+    }
     lv_obj_t* scr = lv_display_get_screen_active(_disp);
+    if (!scr) {
+        ESP_LOGE(TAG, "Skipping UI build because active screen is unavailable");
+        lvgl_port_unlock();
+        return;
+    }
+
     lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
 
     for (uint8_t i = 0; i < _zoneCount; i++) {
@@ -127,13 +73,13 @@ void CYDDisplayConsumer::buildUi() {
     }
 
     _labels[0] = lv_label_create(scr);
-    lv_obj_set_style_text_font(_labels[0], &helvatica_140, 0);
+    lv_obj_set_style_text_font(_labels[0], _titleFont, 0);
     lv_obj_set_style_text_color(_labels[0], lv_color_white(), 0);
     lv_label_set_text(_labels[0], "");
     lv_obj_align(_labels[0], LV_ALIGN_CENTER, 0, 0);
 
     _labels[1] = lv_label_create(scr);
-    lv_obj_set_style_text_font(_labels[1], &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(_labels[1], _subtextFont, 0);
     lv_obj_set_style_text_color(_labels[1], lv_color_white(), 0);
     lv_label_set_text(_labels[1], "");
     lv_obj_align(_labels[1], LV_ALIGN_CENTER, 0, 70);
@@ -143,7 +89,7 @@ void CYDDisplayConsumer::buildUi() {
 
 // ── IConsumer overrides ──────────────────────────────────────────────
 
-void CYDDisplayConsumer::setColor(uint8_t r, uint8_t g, uint8_t b) {
+void ILvglDisplayConsumer::setColor(uint8_t r, uint8_t g, uint8_t b) {
     if (!_zoneObjs || !lvgl_port_lock(portMAX_DELAY)) return;
 
     const uint8_t sr = scale_brightness(r);
@@ -170,8 +116,8 @@ void CYDDisplayConsumer::setColor(uint8_t r, uint8_t g, uint8_t b) {
     lvgl_port_unlock();
 }
 
-void CYDDisplayConsumer::setAlertStep(DeviceAlertAction action,
-                                       DeviceAlertTarget target, uint8_t step) {
+void ILvglDisplayConsumer::setAlertStep(DeviceAlertAction action,
+                                        DeviceAlertTarget target, uint8_t step) {
     const AlertPatternConfig* cfg = getAlertPattern(action);
     if (!cfg || !_zoneObjs || !lvgl_port_lock(portMAX_DELAY)) return;
 
@@ -211,17 +157,20 @@ void CYDDisplayConsumer::setAlertStep(DeviceAlertAction action,
     lvgl_port_unlock();
 }
 
-uint32_t CYDDisplayConsumer::getAlertStepLength(DeviceAlertAction action) {
-    return getAlertPattern(action)->speedMs;
+// TODO: Move to IConsumer?
+uint32_t ILvglDisplayConsumer::getAlertStepLength(DeviceAlertAction action) {
+    const AlertPatternConfig* cfg = getAlertPattern(action);
+    return cfg ? cfg->speedMs : 0;
 }
 
-uint8_t CYDDisplayConsumer::getAlertStepCount(DeviceAlertAction action) {
-    return getAlertPattern(action)->patternLen;
+uint8_t ILvglDisplayConsumer::getAlertStepCount(DeviceAlertAction action) {
+    const AlertPatternConfig* cfg = getAlertPattern(action);
+    return cfg ? cfg->patternLen : 1;
 }
 
 // ── IDisplayConsumer override ────────────────────────────────────────
 
-void CYDDisplayConsumer::onTextChanged(uint8_t index, const char* text) {
+void ILvglDisplayConsumer::onTextChanged(uint8_t index, const char* text) {
     if (index >= 2 || !_labels[index]) return;
     if (!lvgl_port_lock(portMAX_DELAY)) return;
     lv_label_set_text(_labels[index], text);
@@ -230,19 +179,19 @@ void CYDDisplayConsumer::onTextChanged(uint8_t index, const char* text) {
 
 // ── Private helpers ──────────────────────────────────────────────────
 
-void CYDDisplayConsumer::applySlot(uint8_t index) {
+void ILvglDisplayConsumer::applySlot(uint8_t index) {
     lv_label_set_text(_labels[index], getBaseText(index));
 }
 
-lv_color_t CYDDisplayConsumer::contrastTextColor(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness) {
+lv_color_t ILvglDisplayConsumer::contrastTextColor(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness) {
     uint16_t y = (r * 299u + g * 587u + b * 114u) / 1000u;
     return (y > 140) ? lv_color_make(0, 0, 0) : lv_color_make(brightness, brightness, brightness);
 }
 
 // ── Alert pattern table ──────────────────────────────────────────────
 
-const CYDDisplayConsumer::AlertPatternConfig*
-CYDDisplayConsumer::getAlertPattern(DeviceAlertAction action) {
+const ILvglDisplayConsumer::AlertPatternConfig*
+ILvglDisplayConsumer::getAlertPattern(DeviceAlertAction action) {
 
     static const TallyState IDENT[][5]  = {
         { TallyState::NONE,    TallyState::NONE,    TallyState::NONE,    TallyState::NONE },

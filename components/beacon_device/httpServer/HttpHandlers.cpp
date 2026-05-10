@@ -214,29 +214,35 @@ esp_err_t HttpHandlers::handleSetConfig(httpd_req_t* req)
     }    
     
     
-    cJSON* runtime = cJSON_GetObjectItem(root, "runtime");
-    if (runtime) {
-        cJSON* master_brightness = cJSON_GetObjectItem(runtime, "master_brightness");
-        if (cJSON_IsNumber(master_brightness))
-            updated.runtime.brightness = static_cast<uint8_t>(master_brightness->valueint);
-        cJSON* state_on_disconnect = cJSON_GetObjectItem(runtime, "state_on_disconnect");
-        if (cJSON_IsNumber(state_on_disconnect))
-            updated.runtime.state_on_disconnect = static_cast<TallyState>(state_on_disconnect->valueint);
+    // cJSON* runtime = cJSON_GetObjectItem(root, "runtime");
+    // if (runtime) {
+    //     cJSON* master_brightness = cJSON_GetObjectItem(runtime, "master_brightness");
+    //     if (cJSON_IsNumber(master_brightness))
+    //         updated.runtime.brightness = static_cast<uint8_t>(master_brightness->valueint);
+    //     cJSON* state_on_disconnect = cJSON_GetObjectItem(runtime, "state_on_disconnect");
+    //     if (cJSON_IsNumber(state_on_disconnect))
+    //         updated.runtime.state_on_disconnect = static_cast<TallyState>(state_on_disconnect->valueint);
 
-        cJSON* names = cJSON_GetObjectItem(runtime, "name");
-        if (cJSON_IsArray(names)) {
-            int i = 0;
-            cJSON* entry;
-            cJSON_ArrayForEach(entry, names) {
-                if (i >= n) break;
-                cJSON* sname = cJSON_GetObjectItem(entry, "short");
-                cJSON* lname = cJSON_GetObjectItem(entry, "long");
-                if (cJSON_IsString(sname)) strncpy(updated.runtime.name[i].shortName, sname->valuestring, sizeof(updated.runtime.name[i].shortName) - 1);
-                if (cJSON_IsString(lname)) strncpy(updated.runtime.name[i].longName, lname->valuestring, sizeof(updated.runtime.name[i].longName) - 1);
-                i++;
-            }
-        }
-    }
+    //     cJSON* names = cJSON_GetObjectItem(runtime, "name");
+    //     if (cJSON_IsArray(names)) {
+    //         int i = 0;
+    //         cJSON* entry;
+    //         cJSON_ArrayForEach(entry, names) {
+    //             if (i >= n) break;
+    //             cJSON* sname = cJSON_GetObjectItem(entry, "short");
+    //             cJSON* lname = cJSON_GetObjectItem(entry, "long");
+    //             if (cJSON_IsString(sname)) {
+    //                 strncpy(updated.runtime.name[i].shortName, sname->valuestring, sizeof(updated.runtime.name[i].shortName) - 1);
+    //                 updated.runtime.name[i].shortName[sizeof(updated.runtime.name[i].shortName) - 1] = '\0';
+    //             }
+    //             if (cJSON_IsString(lname)) {
+    //                 strncpy(updated.runtime.name[i].longName, lname->valuestring, sizeof(updated.runtime.name[i].longName) - 1);
+    //                 updated.runtime.name[i].longName[sizeof(updated.runtime.name[i].longName) - 1] = '\0';
+    //             }
+    //             i++;
+    //         }
+    //     }
+    // }
 
     cJSON_Delete(root);
 

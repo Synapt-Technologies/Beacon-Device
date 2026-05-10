@@ -2,18 +2,16 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_err.h"
-#include "nvs_flash.h"
-#include "esp_netif.h"
-#include "esp_event.h"
 #include "driver/gpio.h"
 
+#include "platform/Platform.hpp"
 #include "config/NvsSettingsStore.hpp"
 #include "config/DeviceProfile.hpp"
 #include "networkConnection/StaWifiConnection.hpp"
 #include "beaconConnection/TcpMqttBeaconConnection.hpp"
 #include "consumer/SimpleRGBConsumer.hpp"
 #include "consumer/WS2812Consumer.hpp"
-#include "consumer/CYDDisplayConsumer.hpp"
+#include "consumer/display/Ili9341LvglDisplayConsumer.hpp"
 #include "httpServer/EspHttpServer.hpp"
 
 #include "orchestrator/SateliteOrchestrator.hpp"
@@ -55,15 +53,7 @@ extern "C" void app_main()
 {
     vTaskDelay(pdMS_TO_TICKS(100));
 
-    // // Erase and reinit NVS if the partition is full or the layout changed
-    esp_err_t nvs_err = nvs_flash_init();
-    if (nvs_err == ESP_ERR_NVS_NO_FREE_PAGES || nvs_err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        nvs_err = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(nvs_err);
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    Platform::init();
 
     ISettingsStore* settingsStore = new NvsSettingsStore();
     DeviceProfile profile = DeviceProfile{
@@ -92,7 +82,7 @@ extern "C" void app_main()
         { 160,   0,     120,   10,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // right alert bar
         { 160,   230,   120,   10,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
     };
-    IConsumer* consumer3 = new CYDDisplayConsumer(cydZones, 7);
+    IConsumer* consumer3 = new Ili9341LvglDisplayConsumer(cydZones, 7);
 
     IConsumer* consumers[] = { consumer1, consumer2, consumer3 };
 

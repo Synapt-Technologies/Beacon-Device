@@ -39,7 +39,7 @@ jobs:
                      || grep -Po 'CONFIG_IDF_TARGET="\K[^"]+' "$dir/sdkconfig" 2>/dev/null \
                      || echo "esp32")
             devices+=("{\"name\":\"$name\",\"path\":\"$dir\",\"target\":\"$target\"}")
-          done < <(find satelites -mindepth 2 -maxdepth 2 -name "CMakeLists.txt")
+          done < <(find satelites -mindepth 3 -maxdepth 3 -name "CMakeLists.txt")
 
           json=$(printf '%s\n' "${devices[@]}" | jq -s -c '.')
           echo "matrix={\"include\":$json}" >> "$GITHUB_OUTPUT"

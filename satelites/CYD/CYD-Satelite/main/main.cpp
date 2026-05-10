@@ -6,15 +6,6 @@
 #include "esp_netif.h"
 #include "esp_event.h"
 #include "driver/gpio.h"
-#include "led_strip.h"
-
-#include "config.h"
-#include "led_layout.h"
-#include "led_controller.h"
-#include "wifi_manager.h"
-#include "mqtt_manager.h"
-#include "web_server.h"
-#include "beacon_app.h"
 
 #include "config/NvsSettingsStore.hpp"
 #include "config/DeviceProfile.hpp"

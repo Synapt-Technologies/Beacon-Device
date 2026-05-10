@@ -2,7 +2,6 @@
 
 #include "consumer/IConsumer.hpp"
 #include "driver/gpio.h"
-#include "led_pattern.h"
 
 
 class SimpleRGBConsumer : public IConsumer {

@@ -31,13 +31,6 @@ idf_component_register(
         "orchestrator/SateliteOrchestrator.hpp"
         "orchestrator/SateliteOrchestrator.cpp"
         "types/TallyTypes.hpp"
-        "config.cpp"
-        "led_controller.cpp"
-        "led_layout.cpp"
-        "wifi_manager.cpp"
-        "mqtt_manager.cpp"
-        "web_server.cpp"
-        "beacon_app.cpp"
     INCLUDE_DIRS "."
     REQUIRES
         esp_driver_gpio esp_driver_spi esp_lcd led_strip

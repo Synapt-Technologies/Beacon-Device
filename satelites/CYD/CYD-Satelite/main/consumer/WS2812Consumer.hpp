@@ -1,9 +1,9 @@
 #pragma once
 
+#include "led_strip.h"
 #include "consumer/IConsumer.hpp"
 #include "driver/gpio.h"
 #include "freertos/semphr.h"
-#include "led_pattern.h"
 
 
 struct StripSection { // Todo: Brightness section? -> Then the way they are iterated would change..

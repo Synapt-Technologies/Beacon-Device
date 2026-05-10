@@ -2,7 +2,13 @@ name: Release Firmware
 
 on:
   release:
-    types: [published]
+    types: [created, published]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build from'
+        required: false
+        default: 'main'
 
 permissions:
   contents: write
@@ -14,8 +20,12 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.scan.outputs.matrix }}
+    env:
+      TARGET_BRANCH: ${{ github.event.release.target_commitish || inputs.branch }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
 
       - name: Discover devices
         id: scan
@@ -39,9 +49,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
+    env:
+      TARGET_BRANCH: ${{ github.event.release.target_commitish || inputs.branch }}
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
 
       - name: Build ${{ matrix.name }} firmware
         uses: espressif/esp-idf-ci-action@v1
@@ -53,7 +67,8 @@ jobs:
 
       - name: Package flash bundle
         run: |
-          NAME="${{ matrix.name }}-${{ github.ref_name }}"
+          VERSION="${{ github.event.release.tag_name || env.TARGET_BRANCH }}"
+          NAME="${{ matrix.name }}-${VERSION}"
           BUILDDIR="${{ matrix.path }}/build"
           mkdir dist
           cp "$BUILDDIR/app.bin"                             "dist/${NAME}-app.bin"
@@ -61,8 +76,13 @@ jobs:
           cp "$BUILDDIR/partition_table/partition-table.bin" "dist/${NAME}-partition-table.bin"
           cp "$BUILDDIR/flasher_args.json"                   "dist/${NAME}-flasher_args.json"
           (cd dist && zip "${NAME}-flash-bundle.zip" ./*.bin ./*.json)
+          echo "BUNDLE=${NAME}-flash-bundle.zip" >> "$GITHUB_ENV"
 
       - name: Upload flash bundle to release
+        if: github.event_name == 'release'
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.ref_name }}" "dist/${{ matrix.name }}-${{ github.ref_name }}-flash-bundle.zip"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            "dist/${{ env.BUNDLE }}" \
+            --clobber

@@ -231,8 +231,14 @@ esp_err_t HttpHandlers::handleSetConfig(httpd_req_t* req)
                 if (i >= n) break;
                 cJSON* sname = cJSON_GetObjectItem(entry, "short");
                 cJSON* lname = cJSON_GetObjectItem(entry, "long");
-                if (cJSON_IsString(sname)) strncpy(updated.runtime.name[i].shortName, sname->valuestring, sizeof(updated.runtime.name[i].shortName) - 1);
-                if (cJSON_IsString(lname)) strncpy(updated.runtime.name[i].longName, lname->valuestring, sizeof(updated.runtime.name[i].longName) - 1);
+                if (cJSON_IsString(sname)) {
+                    strncpy(updated.runtime.name[i].shortName, sname->valuestring, sizeof(updated.runtime.name[i].shortName) - 1);
+                    updated.runtime.name[i].shortName[sizeof(updated.runtime.name[i].shortName) - 1] = '\0';
+                }
+                if (cJSON_IsString(lname)) {
+                    strncpy(updated.runtime.name[i].longName, lname->valuestring, sizeof(updated.runtime.name[i].longName) - 1);
+                    updated.runtime.name[i].longName[sizeof(updated.runtime.name[i].longName) - 1] = '\0';
+                }
                 i++;
             }
         }

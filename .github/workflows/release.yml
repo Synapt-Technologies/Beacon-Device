@@ -70,8 +70,7 @@ jobs:
             "$APP_BIN" \
             bootloader \
             partition_table \
-            flasher_args.json \
-            flash_args)
+            flasher_args.json)
 
       - name: Upload artifact for manual runs
         if: github.event_name == 'workflow_dispatch'

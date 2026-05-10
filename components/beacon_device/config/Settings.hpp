@@ -24,8 +24,8 @@ struct Settings {
     struct Runtime { // TODO: Server side loading and saving of this, and UI to edit it
         uint8_t brightness = 255; // Master Brightness
         struct Name {
-            char shortName[32] = {};
-            char longName[32]  = {};
+            char shortName[32] = {"SAT"};
+            char longName[32]  = {"Beacon Satelite"};
         } name[8];
         TallyState state_on_disconnect = TallyState::WARNING;
     } runtime;

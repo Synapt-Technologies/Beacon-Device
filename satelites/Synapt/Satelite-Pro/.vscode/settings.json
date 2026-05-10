@@ -8,12 +8,12 @@
     "--compile-commands-dir=c:\\Users\\ijssl\\Programming Projects\\Beacon-DIY\\satelites\\Synapt\\Satelite-Pro\\build"
   ],
   "idf.currentSetup": "C:\\esp\\v6.0\\esp-idf",
-  "idf.flashType": "DFU",
+  "idf.flashType": "UART",
   "idf.openOcdConfigs": [
-    "interface/ftdi/esp_ftdi.cfg",
-    "target/esp32s2.cfg"
+    "board/esp32s2-bridge.cfg"
   ],
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32s2"
-  }
+  },
+  "idf.portWin": "COM4"
 }

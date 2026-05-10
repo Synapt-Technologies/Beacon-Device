@@ -77,7 +77,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}-flash-bundle
-          path: dist/*.zip
+          path: |
+            dist/*.bin
+            dist/*.json
 
       - name: Upload flash bundle to release
         if: github.event_name == 'release'

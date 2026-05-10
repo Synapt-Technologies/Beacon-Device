@@ -20,11 +20,15 @@ public:
 private:
     static constexpr char TAG[] = "SateliteOrch";
 
+    BeaconStatus _beaconStatus = BeaconStatus::DISCONNECTED; // TODO Add UI and check if it needs to be stored here at all.
+
     void onNetworkChanged(const Settings::Network& s);
     void onBeaconChanged (const Settings::Beacon&  s);
     void onDisplayChanged(const Settings::Display& s);
+    void onRuntimeChanged(const Settings::Runtime& s);
 
     void onNetworkStatus(NetworkStatus status, esp_ip4_addr_t ip);
+    void onBeaconStatus(BeaconStatus status);
 
     void applyTally(TallyState state);
     void applyAlert(DeviceAlertAction action, DeviceAlertTarget target, uint32_t timeout);

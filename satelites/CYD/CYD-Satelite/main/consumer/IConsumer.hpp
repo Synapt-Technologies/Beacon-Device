@@ -6,9 +6,13 @@
 #include <stdint.h>
 #include <cmath>
 
+class IDisplayConsumer; // forward declaration for asDisplay()
+
 class IConsumer {
 public:
     virtual ~IConsumer() = default;
+
+    virtual IDisplayConsumer* asDisplay() { return nullptr; }
 
     // Sets all LEDs regardless of target
     virtual void setState(const TallyState state) {
@@ -128,8 +132,9 @@ protected:
 
         if (_alertTask) {
             TaskHandle_t h = _alertTask;
-            _alertTask = nullptr;
-            xTaskNotify(h, 1, eSetBits);
+            _alertTask = nullptr;           // cleared before applyState so consumers
+            xTaskNotify(h, 1, eSetBits);    // see no active alert during the reset
+            applyState(_state);             // reset all zones/LEDs to idle tally state
         }
 
         auto* arg    = new AlertTaskArg;
@@ -154,9 +159,3 @@ protected:
 
 };
 
-class ISmartConsumer : public IConsumer {
-public:
-    virtual ~ISmartConsumer() = default;
-
-    virtual void setText(const char* text, const uint8_t index, const uint32_t timeout = 0) = 0;
-};

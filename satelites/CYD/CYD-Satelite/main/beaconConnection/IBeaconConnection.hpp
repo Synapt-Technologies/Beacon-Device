@@ -8,17 +8,25 @@
 #include "esp_netif_types.h"
 #include "types/TallyTypes.hpp"
 
+enum class BeaconStatus {
+    DISCONNECTED,
+    CONNECTED,
+    ERROR,
+};
+
 class IBeaconConnection {
 public:
     using TallyCb = std::function<void(TallyState state)>;
     using AlertCb = std::function<void(DeviceAlertAction action, DeviceAlertTarget target, uint32_t timeout)>;
+    using NameCb  = std::function<void(const char* shortName, const char* longName)>; // TODO: More generic runtime callback?
+    using ConnectionCb = std::function<void(BeaconStatus status)>;
 
     virtual ~IBeaconConnection() = default;
 
     virtual void start() = 0;
     virtual void stop() = 0;
 
-    virtual bool isConnected() const {
+    bool isConnected() const {
         return _connected && (xTaskGetTickCount() - _lastKeepAlive) < pdMS_TO_TICKS(_aliveTimeout);
     };
 
@@ -38,23 +46,26 @@ public:
         updateSubscriptions();
     }
 
-    virtual void setTallyCallback(TallyCb cb) = 0;
-    virtual void setAlertCallback(AlertCb cb) = 0;
+    void setTallyCallback(TallyCb cb) { _tallyCb = cb; }
+    void setAlertCallback(AlertCb cb) { _alertCb = cb; }
+    void setNameCallback(NameCb cb) { _nameCb = cb; }
+    void setConnectionCallback(ConnectionCb cb) { _connectionCb = cb; }
 
-    virtual void getConsumerAddress(char* out, int len) const {
+    void getConsumerAddress(char* out, int len) const {
         strncpy(out, _consumer, len - 1);
         out[len - 1] = '\0';
     }
 
-    virtual void getDeviceAddress(char* out, int len) const {
+    void getDeviceAddress(char* out, int len) const {
         strncpy(out, _device, len - 1);
         out[len - 1] = '\0';
     }
 
 protected:
-    TallyCb _tallyCb;
-    AlertCb _alertCb;
-
+    TallyCb      _tallyCb;
+    AlertCb      _alertCb;
+    NameCb       _nameCb;
+    ConnectionCb _connectionCb;
     char _consumer[64] = "aedes";
     char _device[64]   = {};
 
@@ -62,6 +73,10 @@ protected:
     uint32_t _aliveTimeout = 2000;
 
     TickType_t _lastKeepAlive = 0;
+
+    void notifyConnectionStatus(BeaconStatus status) {
+        if (_connectionCb) _connectionCb(status);
+    }
 
     virtual void updateSubscriptions() = 0;
     virtual void clearSubscriptions() = 0;

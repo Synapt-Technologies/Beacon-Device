@@ -13,6 +13,7 @@ bool Config::load(bool applyCb)
         if (_networkCb) _networkCb(_settings.network);
         if (_beaconCb) _beaconCb(_settings.beacon);
         if (_displayCb) _displayCb(_settings.display);
+        if (_runtimeCb) _runtimeCb(_settings.runtime);
     }
 
     return true;
@@ -37,11 +38,28 @@ bool Config::apply(const Settings& updated)
         if (_displayCb) _displayCb(_settings.display);
     }
 
+    if (memcmp(&_settings.runtime, &updated.runtime, sizeof(Settings::Runtime)) != 0) {
+        _settings.runtime = updated.runtime;
+        if (_runtimeCb) _runtimeCb(_settings.runtime);
+    }
+
     memcpy(_settings.deviceName, updated.deviceName, sizeof(_settings.deviceName));
 
     return _store.save(_settings);
 }
 
+
+bool Config::applyRuntime(const Settings::Runtime& runtime)
+{
+    if (memcmp(&_settings.runtime, &runtime, sizeof(Settings::Runtime)) != 0) {
+        _settings.runtime = runtime;
+        if (_runtimeCb) _runtimeCb(_settings.runtime);
+        return _store.save(_settings);
+    }
+    return true; // No change, but still "successful"
+}
+
 void Config::onNetworkChanged(NetworkCb cb) { _networkCb = cb; }
 void Config::onBeaconChanged (BeaconCb  cb) { _beaconCb  = cb; }
 void Config::onDisplayChanged(DisplayCb cb) { _displayCb = cb; }
+void Config::onRuntimeChanged(RuntimeCb cb) { _runtimeCb = cb; }

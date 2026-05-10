@@ -2,6 +2,7 @@
 
 #include "beaconConnection/IBeaconConnection.hpp"
 #include "mqtt_client.h"
+#include "esp_timer.h"
 #include "esp_log.h"
 #include <cstring>
 #include <cstdio>
@@ -26,12 +27,26 @@ public:
         esp_mqtt_client_register_event(_client,
                                        (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID,
                                        eventHandler, this);
+
+        esp_timer_create_args_t timerArgs = {};
+        timerArgs.callback        = aliveTimerCallback;
+        timerArgs.arg             = this;
+        timerArgs.dispatch_method = ESP_TIMER_TASK;
+        esp_timer_create(&timerArgs, &_aliveTimer);
+
         esp_mqtt_client_start(_client);
         ESP_LOGI(TAG, "Connecting to %s", _url);
     }
 
     void stop() override {
         if (!_client) return;
+
+        if (_aliveTimer) {
+            esp_timer_stop(_aliveTimer);
+            esp_timer_delete(_aliveTimer);
+            _aliveTimer = nullptr;
+        }
+        if (_connected) notifyConnectionStatus(BeaconStatus::DISCONNECTED);
 
         esp_mqtt_client_stop(_client);
         esp_mqtt_client_destroy(_client);
@@ -51,8 +66,6 @@ public:
         }
     }
 
-    void setTallyCallback(TallyCb cb) override { _tallyCb = cb; }
-    void setAlertCallback(AlertCb cb) override { _alertCb = cb; }
 
 private:
     static constexpr char TAG[]       = "TcpMqtt";
@@ -62,6 +75,7 @@ private:
     char                     _tallyTopic[160] = {};
     char                     _alertTopic[160] = {};
     esp_mqtt_client_handle_t _client          = nullptr;
+    esp_timer_handle_t       _aliveTimer      = nullptr;
 
     void updateSubscriptions() override {
         if (!_client || !_connected) return;
@@ -76,7 +90,7 @@ private:
         else
             ESP_LOGI(TAG, "Subscribed to %s", _infoTopic);
 
-        if (_tallyCb) {
+        if (_tallyCb || _nameCb) { // TODO: Check if name/info need a separate topic. Currently they are sent together with the tally state.
             if (esp_mqtt_client_subscribe(_client, _tallyTopic, 0) < 0)
                 ESP_LOGW(TAG, "Failed to subscribe to %s", _tallyTopic);
             else
@@ -118,10 +132,14 @@ private:
                 self->_connected     = true;
                 self->_lastKeepAlive = xTaskGetTickCount();
                 self->updateSubscriptions();
+                esp_timer_start_once(self->_aliveTimer, (uint64_t)self->_aliveTimeout * 1000);
+                self->notifyConnectionStatus(BeaconStatus::CONNECTED);
                 ESP_LOGI(TAG, "Connected");
                 break;
             case MQTT_EVENT_DISCONNECTED:
                 self->_connected = false;
+                if (self->_aliveTimer) esp_timer_stop(self->_aliveTimer);
+                self->notifyConnectionStatus(BeaconStatus::DISCONNECTED);
                 ESP_LOGI(TAG, "Disconnected");
                 break;
             case MQTT_EVENT_DATA:
@@ -149,36 +167,77 @@ private:
 
     void onGlobalInfo(const char* data, int len) { // TODO add Beacon info parsing
         _lastKeepAlive = xTaskGetTickCount();
+        if (_aliveTimer) {
+            esp_timer_stop(_aliveTimer);
+            esp_timer_start_once(_aliveTimer, (uint64_t)_aliveTimeout * 1000);
+        }
+    }
+
+    static void aliveTimerCallback(void* arg) {
+        auto* self = static_cast<TcpMqttBeaconConnection*>(arg);
+        self->_connected = false;
+        self->notifyConnectionStatus(BeaconStatus::DISCONNECTED);
+        ESP_LOGW(TAG, "Keep-alive timeout — beacon unreachable");
     }
 
     void onTally(const char* data, int len) {
-        if (!_tallyCb)
-            return;
 
-        TallyState ss = TallyState::NONE;
-        int rawSs = extractInt(data, len, "ss", -1);
-        if (rawSs >= 0) {
-            ss = static_cast<TallyState>(rawSs);
-        } else {
-            char state[16] = {};
-            const char* key = "\"state\":\"";
-            for (int i = 0; i <= len - 9; i++) {
-                if (strncmp(data + i, key, 9) == 0) {
-                    const char* p = data + i + 9;
-                    int j = 0;
-                    while (p + j < data + len && p[j] != '"' && j < 15)
-                        state[j] = p[j], j++;
-                    break;
+        if (_tallyCb) {
+
+            TallyState ss = TallyState::NONE;
+            int rawSs = extractInt(data, len, "ss", -1);
+            if (rawSs >= 0) {
+                ss = static_cast<TallyState>(rawSs);
+            } else {
+                char state[16] = {};
+                const char* key = "\"state\":\"";
+                for (int i = 0; i <= len - 9; i++) {
+                    if (strncmp(data + i, key, 9) == 0) {
+                        const char* p = data + i + 9;
+                        int j = 0;
+                        while (p + j < data + len && p[j] != '"' && j < 15)
+                            state[j] = p[j], j++;
+                        break;
+                    }
                 }
+                if      (strcmp(state, "PROGRAM") == 0) ss = TallyState::PROGRAM;
+                else if (strcmp(state, "DANGER")  == 0) ss = TallyState::DANGER;
+                else if (strcmp(state, "PREVIEW") == 0) ss = TallyState::PREVIEW;
+                else if (strcmp(state, "WARNING") == 0) ss = TallyState::WARNING;
             }
-            if      (strcmp(state, "PROGRAM") == 0) ss = TallyState::PROGRAM;
-            else if (strcmp(state, "DANGER")  == 0) ss = TallyState::DANGER;
-            else if (strcmp(state, "PREVIEW") == 0) ss = TallyState::PREVIEW;
-            else if (strcmp(state, "WARNING") == 0) ss = TallyState::WARNING;
+
+            ESP_LOGI(TAG, "Tally ss=%d", static_cast<int>(ss));
+            
+            _tallyCb(ss);
         }
 
-        ESP_LOGI(TAG, "Tally ss=%d", static_cast<int>(ss));
-        _tallyCb(ss);
+        if (_nameCb) {
+            char shortName[64] = {};
+            char longName[64]  = {};
+
+            static constexpr char shortKey[] = "\"short\":\"";
+            static constexpr char longKey[]  = "\"long\":\"";
+            static constexpr int  shortKeyLen = sizeof(shortKey) - 1;
+            static constexpr int  longKeyLen  = sizeof(longKey)  - 1;
+
+            for (int i = 0; i < len; i++) {
+                if (i + shortKeyLen <= len && strncmp(data + i, shortKey, shortKeyLen) == 0) {
+                    const char* p = data + i + shortKeyLen;
+                    int j = 0;
+                    while (p + j < data + len && p[j] != '"' && j < 63)
+                        shortName[j] = p[j], j++;
+                } else if (i + longKeyLen <= len && strncmp(data + i, longKey, longKeyLen) == 0) {
+                    const char* p = data + i + longKeyLen;
+                    int j = 0;
+                    while (p + j < data + len && p[j] != '"' && j < 63)
+                        longName[j] = p[j], j++;
+                }
+            }
+
+            ESP_LOGI(TAG, "Device name: short=\"%s\" long=\"%s\"", shortName, longName);
+
+            _nameCb(shortName, longName);
+        }
     }
 
     void onAlert(const char* data, int len) {

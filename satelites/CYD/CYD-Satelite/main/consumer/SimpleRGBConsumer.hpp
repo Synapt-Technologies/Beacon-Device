@@ -2,7 +2,6 @@
 
 #include "consumer/IConsumer.hpp"
 #include "driver/gpio.h"
-#include "led_pattern.h"
 
 
 class SimpleRGBConsumer : public IConsumer {
@@ -71,14 +70,14 @@ private:
     // Returns nullptr for CLEAR (no pattern). TallyState::NONE = LED off.
     static const AlertPatternConfig* getAlertPattern(DeviceAlertAction action) {
 
-        static const TallyState IDENT[]  = { TallyState::PREVIEW, TallyState::PROGRAM };
-        static const TallyState INFO[]   = { TallyState::PREVIEW, TallyState::NONE, TallyState::NONE, TallyState::NONE };
-        static const TallyState NORMAL[] = { TallyState::WARNING, TallyState::NONE };
-        static const TallyState PRIO[]   = { TallyState::PROGRAM, TallyState::WARNING };
+        static const TallyState IDENT[]  = { TallyState::PREVIEW,   TallyState::PROGRAM };
+        static const TallyState INFO[]   = { TallyState::INFO,      TallyState::NONE };
+        static const TallyState NORMAL[] = { TallyState::WARNING,   TallyState::NONE };
+        static const TallyState PRIO[]   = { TallyState::PROGRAM,   TallyState::WARNING };
 
         static const AlertPatternConfig PATTERNS[] = {
             { 400, IDENT,  2 },
-            { 300, INFO,   4 },
+            { 300, INFO,   2 },
             { 400, NORMAL, 2 },
             { 150, PRIO,   2 },
         };

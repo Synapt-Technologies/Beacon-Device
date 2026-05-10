@@ -8,6 +8,7 @@ public:
     using NetworkCb = std::function<void(const Settings::Network&)>;
     using BeaconCb  = std::function<void(const Settings::Beacon&)>;
     using DisplayCb = std::function<void(const Settings::Display&)>;
+    using RuntimeCb = std::function<void(const Settings::Runtime&)>;
 
     explicit Config(ISettingsStore& store);
 
@@ -20,9 +21,12 @@ public:
     // Returns false if saving to the store failed.
     bool apply(const Settings& updated);
 
+    bool applyRuntime(const Settings::Runtime& runtime);
+
     void onNetworkChanged(NetworkCb cb);
     void onBeaconChanged (BeaconCb  cb);
     void onDisplayChanged(DisplayCb cb);
+    void onRuntimeChanged(RuntimeCb cb);
 
 private:
     ISettingsStore& _store;
@@ -31,4 +35,5 @@ private:
     NetworkCb _networkCb;
     BeaconCb  _beaconCb;
     DisplayCb _displayCb;
+    RuntimeCb _runtimeCb;
 };

@@ -18,21 +18,17 @@ struct Settings {
 
     struct Display {
         uint8_t           brightness[8]   = {255, 255, 255, 255, 255, 255, 255, 255};
-        DeviceAlertTarget alertTarget[8]  = { // TODO: Currently not implemented, for multi target consumers.
-            DeviceAlertTarget::ALL, DeviceAlertTarget::ALL,
-            DeviceAlertTarget::ALL, DeviceAlertTarget::ALL,
-            DeviceAlertTarget::ALL, DeviceAlertTarget::ALL,
-            DeviceAlertTarget::ALL, DeviceAlertTarget::ALL,
-        };
+        // TODO: Add some sort of alert target / flip here?
     } display;
 
-    // struct Presentation { // TODO: Server side loading and saving of this, and UI to edit it
-    //     uint8_t           brightness[8]   = {255, 255, 255, 255, 255, 255, 255, 255};
-    //     struct Name {
-    //         char shortName[16] = {};
-    //         char longName[32]  = {};
-    //     } name[8];
-    // } presentation;
+    struct Runtime { // TODO: Server side loading and saving of this, and UI to edit it
+        uint8_t brightness = 255; // Master Brightness
+        struct Name {
+            char shortName[32] = {};
+            char longName[32]  = {};
+        } name[8];
+        TallyState state_on_disconnect = TallyState::WARNING;
+    } runtime;
 
     char deviceName[32] = "Beacon Satellite";
 };

@@ -1,8 +1,9 @@
 #pragma once
 
+#include "led_strip.h"
 #include "consumer/IConsumer.hpp"
 #include "driver/gpio.h"
-#include "led_pattern.h"
+#include "freertos/semphr.h"
 
 
 struct StripSection { // Todo: Brightness section? -> Then the way they are iterated would change..
@@ -15,36 +16,37 @@ class WS2812Consumer : public IConsumer {
 
 public:
     WS2812Consumer(led_strip_handle_t strip, uint8_t ledCount, StripSection sections[], uint8_t sectionCount) {
-
         _strip = strip;
         _ledCount = ledCount;
         _sections = sections;
         _sectionCount = sectionCount;
+        _mutex = xSemaphoreCreateMutex();
         rebuildLut();
     }
     ~WS2812Consumer() {
-
+        if (_mutex) vSemaphoreDelete(_mutex);
     }
 
 private:
 
-    led_strip_handle_t _strip;
-    int                _ledCount;
+    led_strip_handle_t  _strip;
+    int                 _ledCount;
+    SemaphoreHandle_t   _mutex;
 
     StripSection* _sections;
     uint8_t _sectionCount;
 
 
     void setColor(uint8_t r, uint8_t g, uint8_t b) {
-
         const uint8_t sr = scale_brightness(r);
         const uint8_t sg = scale_brightness(g);
         const uint8_t sb = scale_brightness(b);
 
+        xSemaphoreTake(_mutex, portMAX_DELAY);
         for (int i = 0; i < _ledCount; i++)
             led_strip_set_pixel(_strip, i, sr, sg, sb);
-
         led_strip_refresh(_strip);
+        xSemaphoreGive(_mutex);
     }
 
     void setColorRange(uint8_t start, uint8_t count, uint8_t r, uint8_t g, uint8_t b) {
@@ -57,10 +59,10 @@ private:
 
 
     void setAlertStep(DeviceAlertAction action, DeviceAlertTarget target, uint8_t step) override {
-
         const AlertPatternConfig* config = getAlertPattern(action);
         if (!config) return;
 
+        xSemaphoreTake(_mutex, portMAX_DELAY);
         for (uint8_t s = 0; s < _sectionCount; s++) {
             const StripSection& sec = _sections[s];
             if (sec.target != DeviceAlertTarget::ALL && target != DeviceAlertTarget::ALL && sec.target != target)
@@ -83,6 +85,7 @@ private:
             setColorRange(start, count, r, g, b);
         }
         led_strip_refresh(_strip);
+        xSemaphoreGive(_mutex);
     }
 
     struct AlertPatternConfig {
@@ -113,12 +116,12 @@ private:
         static const TallyState INFO[][5]   = {
             { TallyState::NONE,     TallyState::NONE,       TallyState::NONE,       TallyState::NONE },
             { TallyState::INFO,     TallyState::NONE,       TallyState::INFO,       TallyState::NONE },
-            { TallyState::NONE,     TallyState::INFO,       TallyState::NONE,       TallyState::INFO },
+            { TallyState::INFO,     TallyState::NONE,       TallyState::INFO,       TallyState::NONE },
         };
         static const TallyState NORMAL[][5] = {
             { TallyState::NONE,     TallyState::NONE,       TallyState::NONE,       TallyState::NONE },
             { TallyState::WARNING,  TallyState::NONE,       TallyState::WARNING,    TallyState::NONE },
-            { TallyState::NONE,     TallyState::WARNING,    TallyState::NONE,       TallyState::WARNING },
+            { TallyState::WARNING,  TallyState::NONE,       TallyState::WARNING,    TallyState::NONE },
         };
         static const TallyState PRIO[][5]   = {
             { TallyState::NONE,     TallyState::NONE,       TallyState::NONE,       TallyState::NONE },

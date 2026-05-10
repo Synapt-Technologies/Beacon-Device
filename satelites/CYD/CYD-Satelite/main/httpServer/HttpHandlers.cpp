@@ -87,23 +87,23 @@ esp_err_t HttpHandlers::handleGetDevice(httpd_req_t* req)
 
 // ── GET /api/config ───────────────────────────────────────────────────────────
 
-esp_err_t HttpHandlers::handleGetConfig(httpd_req_t* req)
+esp_err_t HttpHandlers::handleGetConfig(httpd_req_t* req) // TODO add runtime config
 {
     auto*           ctx = static_cast<HttpCtx*>(req->user_ctx);
-    const Settings& s   = ctx->config.get();
-    const int       n   = ctx->profile.consumerCount;
+    const Settings& s  = ctx->config.get();
+    const int       cn = ctx->profile.consumerCount;
+    const int       bn = ctx->profile.deviceType == DeviceType::SINGLE_TOPIC ? 1 : ctx->profile.consumerCount;
 
     cJSON* root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "deviceName", s.deviceName);
 
     cJSON* network = cJSON_AddObjectToObject(root, "network");
     cJSON_AddStringToObject(network, "ssid",     s.network.ssid);
-    cJSON_AddStringToObject(network, "password", s.network.password);
 
     cJSON* beacon = cJSON_AddObjectToObject(root, "beacon");
     cJSON_AddStringToObject(beacon, "mqttUrl", s.beacon.mqttUrl);
     cJSON* consumers = cJSON_AddArrayToObject(beacon, "consumers");
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < bn; i++) {
         cJSON* c = cJSON_CreateObject();
         cJSON_AddStringToObject(c, "consumerId", s.beacon.consumerId[i]);
         cJSON_AddStringToObject(c, "deviceId",   s.beacon.deviceId[i]);
@@ -112,12 +112,20 @@ esp_err_t HttpHandlers::handleGetConfig(httpd_req_t* req)
 
     cJSON* display     = cJSON_AddObjectToObject(root, "display");
     cJSON* brightness  = cJSON_AddArrayToObject(display, "brightness");
-    cJSON* alertTarget = cJSON_AddArrayToObject(display, "alertTarget");
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < cn; i++) {
         cJSON_AddItemToArray(brightness,   cJSON_CreateNumber(s.display.brightness[i]));
-        cJSON_AddItemToArray(alertTarget,  cJSON_CreateNumber(static_cast<int>(s.display.alertTarget[i])));
     }
 
+    cJSON* runtime     = cJSON_AddObjectToObject(root, "runtime");
+    cJSON_AddNumberToObject(runtime, "master_brightness", s.runtime.brightness);
+    cJSON_AddNumberToObject(runtime, "state_on_disconnect", static_cast<int>(s.runtime.state_on_disconnect));
+    cJSON* names = cJSON_AddArrayToObject(runtime, "name");
+    for (int i = 0; i < bn; i++) {
+        cJSON* c = cJSON_CreateObject();
+        cJSON_AddStringToObject(c, "short", s.runtime.name[i].shortName);
+        cJSON_AddStringToObject(c, "long",  s.runtime.name[i].longName);
+        cJSON_AddItemToArray(names, c);
+    }
     return sendJson(req, root);
 }
 
@@ -151,6 +159,8 @@ esp_err_t HttpHandlers::handleSetConfig(httpd_req_t* req)
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
         return ESP_FAIL;
     }
+
+
 
     Settings updated = ctx->config.get();
     const int n      = ctx->profile.consumerCount;
@@ -201,14 +211,28 @@ esp_err_t HttpHandlers::handleSetConfig(httpd_req_t* req)
                 i++;
             }
         }
-        cJSON* alertTarget = cJSON_GetObjectItem(display, "alertTarget");
-        if (cJSON_IsArray(alertTarget)) {
+    }    
+    
+    
+    cJSON* runtime = cJSON_GetObjectItem(root, "runtime");
+    if (runtime) {
+        cJSON* master_brightness = cJSON_GetObjectItem(runtime, "master_brightness");
+        if (cJSON_IsNumber(master_brightness))
+            updated.runtime.brightness = static_cast<uint8_t>(master_brightness->valueint);
+        cJSON* state_on_disconnect = cJSON_GetObjectItem(runtime, "state_on_disconnect");
+        if (cJSON_IsNumber(state_on_disconnect))
+            updated.runtime.state_on_disconnect = static_cast<TallyState>(state_on_disconnect->valueint);
+
+        cJSON* names = cJSON_GetObjectItem(runtime, "name");
+        if (cJSON_IsArray(names)) {
             int i = 0;
-            cJSON* val;
-            cJSON_ArrayForEach(val, alertTarget) {
+            cJSON* entry;
+            cJSON_ArrayForEach(entry, names) {
                 if (i >= n) break;
-                if (cJSON_IsNumber(val))
-                    updated.display.alertTarget[i] = static_cast<DeviceAlertTarget>(val->valueint);
+                cJSON* sname = cJSON_GetObjectItem(entry, "short");
+                cJSON* lname = cJSON_GetObjectItem(entry, "long");
+                if (cJSON_IsString(sname)) strncpy(updated.runtime.name[i].shortName, sname->valuestring, sizeof(updated.runtime.name[i].shortName) - 1);
+                if (cJSON_IsString(lname)) strncpy(updated.runtime.name[i].longName, lname->valuestring, sizeof(updated.runtime.name[i].longName) - 1);
                 i++;
             }
         }

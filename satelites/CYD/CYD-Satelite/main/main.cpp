@@ -6,15 +6,6 @@
 #include "esp_netif.h"
 #include "esp_event.h"
 #include "driver/gpio.h"
-#include "led_strip.h"
-
-#include "config.h"
-#include "led_layout.h"
-#include "led_controller.h"
-#include "wifi_manager.h"
-#include "mqtt_manager.h"
-#include "web_server.h"
-#include "beacon_app.h"
 
 #include "config/NvsSettingsStore.hpp"
 #include "config/DeviceProfile.hpp"
@@ -22,6 +13,7 @@
 #include "beaconConnection/TcpMqttBeaconConnection.hpp"
 #include "consumer/SimpleRGBConsumer.hpp"
 #include "consumer/WS2812Consumer.hpp"
+#include "consumer/CYDDisplayConsumer.hpp"
 #include "httpServer/EspHttpServer.hpp"
 
 #include "orchestrator/SateliteOrchestrator.hpp"
@@ -77,21 +69,32 @@ extern "C" void app_main()
     DeviceProfile profile = DeviceProfile{
         .deviceType = DeviceType::SINGLE_TOPIC,
         .model = "CYD Satellite",
-        .consumerCount = 2,
+        .consumerCount = 3,
     };
     INetworkConnection* network = new StaWifiConnection("CYD_Satellite");
 
     IBeaconConnection* beacon = new TcpMqttBeaconConnection();
 
     static StripSection ws2812Sections[] = {
-        { 0, 1, DeviceAlertTarget::ALL },
-        { 24, 0, DeviceAlertTarget::ALL },
-        { 40, 2, DeviceAlertTarget::ALL },
+        { 0, 1, DeviceAlertTarget::OPERATOR },
+        { 24, 0, DeviceAlertTarget::OPERATOR },
+        { 40, 2, DeviceAlertTarget::OPERATOR },
     };
     IConsumer* consumer1 = new WS2812Consumer(createLedStrip(), ADD_LED_STRIP_LED_NUMBER, ws2812Sections, 3);
     IConsumer* consumer2 = new SimpleRGBConsumer(FIX_LED_R_GPIO, FIX_LED_G_GPIO, FIX_LED_B_GPIO, DeviceAlertTarget::OPERATOR);
 
-    IConsumer* consumers[] = { consumer1, consumer2 };
+    static const IDisplayConsumer::Zone cydZones[] = {
+        {   0,   0,     320,  240,  0, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // background (always visible)
+        {   0,   0,      40,  240,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
+        {  40,   0,     120,   10,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
+        {  40,   230,   120,   10,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
+        { 280,   0,      40,  240,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // right alert bar
+        { 160,   0,     120,   10,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // right alert bar
+        { 160,   230,   120,   10,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
+    };
+    IConsumer* consumer3 = new CYDDisplayConsumer(cydZones, 7);
+
+    IConsumer* consumers[] = { consumer1, consumer2, consumer3 };
 
     EspHttpServer httpServer = EspHttpServer();
 
@@ -103,26 +106,5 @@ extern "C" void app_main()
     while (true) {
         vTaskDelay(portMAX_DELAY);
     }
-
-    // // All objects on heap — WifiManager alone is ~1.4 KB due to wifi_ap_record_t[16]
-    // auto* config = new NvsConfig();
-    // config->load();
-
-    // g_layout.parse(config->get().led_layout);
-
-    // led_strip_handle_t strip = createLedStrip();
-    // auto* leds = new CompositeLedController(strip,
-    //                                         FIX_LED_R_GPIO, FIX_LED_G_GPIO, FIX_LED_B_GPIO,
-    //                                         ADD_LED_STRIP_LED_NUMBER,
-    //                                         g_layout,
-    //                                         config->get().led_brightness);
-    // auto* wifi = new WifiManager(config->get());
-    // auto* mqtt = new MqttManager();
-    // auto* web  = new WebServer(*config, *wifi, *mqtt);
-    // auto* app  = new BeaconApp(*leds, *config, *wifi, *mqtt, *web);
-    // web->setBeaconApp(app);
-
-    // app->run(); // spawns tasks then deletes the main task
-
     
 }

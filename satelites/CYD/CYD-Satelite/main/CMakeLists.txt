@@ -4,6 +4,4 @@ idf_component_register(
     REQUIRES
         beacon_device
         led_strip
-        nvs_flash
-        esp_netif
 )

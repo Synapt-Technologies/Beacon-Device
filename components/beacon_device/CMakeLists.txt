@@ -5,6 +5,7 @@ idf_component_register(
         "consumer/IDisplayConsumer.cpp"
         "consumer/display/CYDDisplayConsumer.cpp"
         "consumer/display/fonts/helvatica_140.c"
+        "platform/Platform.cpp"
         "httpServer/EspHttpServer.cpp"
         "httpServer/HttpHandlers.cpp"
         "networkConnection/StaWifiConnection.cpp"
@@ -21,6 +22,7 @@ idf_component_register(
         "consumer/SimpleRGBConsumer.hpp"
         "consumer/WS2812Consumer.hpp"
         "consumer/display/CYDDisplayConsumer.hpp"
+        "platform/Platform.hpp"
         "httpServer/EspHttpServer.hpp"
         "httpServer/HttpHandlers.hpp"
         "networkConnection/INetworkConnection.hpp"
@@ -41,6 +43,7 @@ idf_component_register(
         lvgl__lvgl
         espressif__esp_lcd_ili9341
         espressif__esp_lvgl_port
+        esp_event
         # TODO: Move to PRIV_REQUIRES
         nvs_flash
         esp_http_server

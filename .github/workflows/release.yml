@@ -65,21 +65,19 @@ jobs:
           VERSION="${{ github.event.release.tag_name || env.TARGET_BRANCH }}"
           NAME="${{ matrix.name }}-${VERSION}"
           BUILDDIR="${{ matrix.path }}/build"
-          APP_BIN=$(find "$BUILDDIR" -maxdepth 1 -name "*.bin")
-          mkdir dist
-          cp "$APP_BIN"                                      "dist/${NAME}-app.bin"
-          cp "$BUILDDIR/bootloader/bootloader.bin"           "dist/${NAME}-bootloader.bin"
-          cp "$BUILDDIR/partition_table/partition-table.bin" "dist/${NAME}-partition-table.bin"
-          cp "$BUILDDIR/flasher_args.json"                   "dist/${NAME}-flasher_args.json"
-          (cd dist && zip "${NAME}-flash-bundle.zip" ./*.bin ./*.json)
+          APP_BIN=$(find "$BUILDDIR" -maxdepth 1 -name "*.bin" -exec basename {} \;)
+          (cd "$BUILDDIR" && zip "$GITHUB_WORKSPACE/${NAME}-flash-bundle.zip" \
+            "$APP_BIN" \
+            bootloader/bootloader.bin \
+            partition_table/partition-table.bin \
+            flasher_args.json)
+
       - name: Upload artifact for manual runs
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}-flash-bundle
-          path: |
-            dist/*.bin
-            dist/*.json
+          path: "*-flash-bundle.zip"
 
       - name: Upload flash bundle to release
         if: github.event_name == 'release'
@@ -87,6 +85,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ github.event.release.tag_name }}"
+          NAME="${{ matrix.name }}-${VERSION}"
           gh release upload "$VERSION" \
-            "dist/${{ matrix.name }}-${VERSION}-flash-bundle.zip" \
+            "${NAME}-flash-bundle.zip" \
             --clobber

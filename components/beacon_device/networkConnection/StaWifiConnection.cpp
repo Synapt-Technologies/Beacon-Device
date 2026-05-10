@@ -3,6 +3,7 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_netif.h"
+#include <cinttypes>
 #include <cstring>
 #include <cstdio>
 
@@ -299,7 +300,7 @@ void StaWifiConnection::onEvent(esp_event_base_t base, int32_t id, void* data)
         case WIFI_EVENT_SCAN_DONE: {
             auto* e = static_cast<wifi_event_sta_scan_done_t*>(data);
             if (e && e->status != 0) {
-                ESP_LOGW(TAG, "Scan failed, status=%d", e->status);
+                ESP_LOGW(TAG, "Scan failed, status=%" PRIu32, e->status);
                 if (_scanMutex && xSemaphoreTake(_scanMutex, portMAX_DELAY) == pdTRUE) {
                     _scanInProgress = false;
                     _scanCount = 0;

@@ -17,6 +17,7 @@ idf_component_register(
         "consumer/WS2812Consumer.hpp"
         "consumer/CYDDisplayConsumer.hpp"
         "consumer/CYDDisplayConsumer.cpp"
+        "consumer/lvgl/fonts/helvatica_120.c"
         "httpServer/EspHttpServer.hpp"
         "httpServer/EspHttpServer.cpp"
         "httpServer/HttpHandlers.hpp"

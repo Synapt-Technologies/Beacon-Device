@@ -9,6 +9,8 @@
 #include "esp_lvgl_port.h"
 #include "esp_log.h"
 
+LV_FONT_DECLARE(helvatica_120);
+
 namespace {
 constexpr const char* TAG = "CYDDisplay";
 constexpr int LCD_PIXEL_CLOCK_HZ    = 80 * 1000 * 1000;
@@ -111,6 +113,7 @@ void CYDDisplayConsumer::buildUi() {
     if (!lvgl_port_lock(portMAX_DELAY)) return;
 
     lv_obj_t* scr = lv_display_get_screen_active(_disp);
+    lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
 
     for (uint8_t i = 0; i < _zoneCount; i++) {
         const IDisplayConsumer::Zone& z = _displayZones[i];
@@ -124,16 +127,16 @@ void CYDDisplayConsumer::buildUi() {
     }
 
     _labels[0] = lv_label_create(scr);
-    lv_obj_set_style_text_font(_labels[0], &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_font(_labels[0], &helvatica_120, 0);
     lv_obj_set_style_text_color(_labels[0], lv_color_white(), 0);
     lv_label_set_text(_labels[0], "");
-    lv_obj_align(_labels[0], LV_ALIGN_CENTER, 0, -16);
+    lv_obj_align(_labels[0], LV_ALIGN_CENTER, 0, 0);
 
     _labels[1] = lv_label_create(scr);
     lv_obj_set_style_text_font(_labels[1], &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(_labels[1], lv_color_white(), 0);
     lv_label_set_text(_labels[1], "");
-    lv_obj_align(_labels[1], LV_ALIGN_CENTER, 0, 20);
+    lv_obj_align(_labels[1], LV_ALIGN_CENTER, 0, 55);
 
     lvgl_port_unlock();
 }

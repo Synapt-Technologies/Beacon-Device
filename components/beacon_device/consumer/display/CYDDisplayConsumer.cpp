@@ -1,4 +1,4 @@
-#include "consumer/CYDDisplayConsumer.hpp"
+#include "consumer/display/CYDDisplayConsumer.hpp"
 
 #include "driver/gpio.h"
 #include "driver/spi_master.h"

@@ -13,7 +13,7 @@
 #include "beaconConnection/TcpMqttBeaconConnection.hpp"
 #include "consumer/SimpleRGBConsumer.hpp"
 #include "consumer/WS2812Consumer.hpp"
-#include "consumer/CYDDisplayConsumer.hpp"
+#include "consumer/display/CYDDisplayConsumer.hpp"
 #include "httpServer/EspHttpServer.hpp"
 
 #include "orchestrator/SateliteOrchestrator.hpp"

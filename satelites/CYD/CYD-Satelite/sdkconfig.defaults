@@ -18,5 +18,9 @@ CONFIG_LV_FONT_MONTSERRAT_48=y
 CONFIG_FREERTOS_HZ=1000
 
 
-# Color logs 
+# Color logs
 CONFIG_BOOTLOADER_LOG_COLORS=y
+
+# main task allocates SateliteOrchestrator + EspHttpServer on the stack and
+# calls into LVGL during display init — 3584 bytes is not enough
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192

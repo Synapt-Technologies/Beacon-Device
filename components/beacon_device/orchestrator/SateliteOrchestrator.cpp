@@ -55,6 +55,7 @@ void SateliteOrchestrator::start()
     registerHttpHandlers(); // TODO Build context.
 
     ESP_LOGI(TAG, "Started");
+    ESP_LOGI("main", "Stack HWM: %lu bytes free", uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t));
 }
 
 void SateliteOrchestrator::stop()

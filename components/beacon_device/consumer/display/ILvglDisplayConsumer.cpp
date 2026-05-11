@@ -84,6 +84,11 @@ void ILvglDisplayConsumer::buildUi() {
     lv_label_set_text(_labels[1], "");
     lv_obj_align(_labels[1], LV_ALIGN_CENTER, 0, 70);
 
+    if (_disp) {
+        lv_obj_invalidate(lv_screen_active());
+        lv_refr_now(_disp);
+    }
+
     lvgl_port_unlock();
 }
 

@@ -58,11 +58,11 @@ lv_display_t* Hub75LvglDisplayConsumer::initHardware(bool screentest) {
         for (uint16_t row = 0; row < numRows; row++) {
             _driver.clear();
             write_row(row, 255, 0, 0);
-            vTaskDelay(pdMS_TO_TICKS(100));
+            vTaskDelay(pdMS_TO_TICKS(50));
             write_row(row, 0, 255, 0);
-            vTaskDelay(pdMS_TO_TICKS(100));
+            vTaskDelay(pdMS_TO_TICKS(50));
             write_row(row, 0, 0, 255);
-            vTaskDelay(pdMS_TO_TICKS(100));
+            vTaskDelay(pdMS_TO_TICKS(50));
             write_row(row, 255, 255, 255);
             ESP_LOGI(TAG, "  row %u/%u", row, numRows - 1);
             vTaskDelay(pdMS_TO_TICKS(100));

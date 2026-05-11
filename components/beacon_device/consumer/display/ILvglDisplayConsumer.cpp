@@ -30,7 +30,7 @@ ILvglDisplayConsumer::~ILvglDisplayConsumer() {
 void ILvglDisplayConsumer::ensureLvglPortInited() {
     if (s_lvgl_inited) return;
     lvgl_port_cfg_t port = ESP_LVGL_PORT_INIT_CONFIG();
-    port.task_priority   = 4;
+    port.task_priority   = 14;
     port.task_stack      = 8 * 1024;
     port.timer_period_ms = 5;
     ESP_ERROR_CHECK(lvgl_port_init(&port));
@@ -121,6 +121,8 @@ void ILvglDisplayConsumer::setColor(uint8_t r, uint8_t g, uint8_t b) {
 
     if (!isRevertPending(0)) applySlot(0);
 
+    lv_refr_now(_disp);
+
     lvgl_port_unlock();
 }
 
@@ -161,6 +163,8 @@ void ILvglDisplayConsumer::setAlertStep(DeviceAlertAction action,
             lv_obj_set_style_bg_opa(_zoneObjs[i], LV_OPA_COVER, 0);
         }
     }
+
+    lv_refr_now(_disp);
 
     lvgl_port_unlock();
 }

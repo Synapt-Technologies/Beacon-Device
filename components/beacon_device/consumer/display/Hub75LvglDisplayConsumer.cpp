@@ -119,7 +119,7 @@ void Hub75LvglDisplayConsumer::flushCb(lv_display_t* disp, const lv_area_t* area
     const uint16_t h = static_cast<uint16_t>(area->y2 - area->y1 + 1);
     self->_driver.draw_pixels(x, y, w, h, px_map, Hub75PixelFormat::RGB565);
 
-    if (self->_config.double_buffer) {
+    if (self->_config.double_buffer && lv_display_flush_is_last(disp)) {
         self->_driver.flip_buffer();
     }
 

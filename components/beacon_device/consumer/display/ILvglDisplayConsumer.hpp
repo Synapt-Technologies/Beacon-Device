@@ -7,6 +7,14 @@ class ILvglDisplayConsumer : public IDisplayConsumer {
 public:
     ~ILvglDisplayConsumer() override;
 
+    // TODO: Add this to the constructor as an array to match the text indeces.
+    // struct FontConfig {
+    //     const lv_font_t* font;
+    //     lv_align_t align = LV_ALIGN_CENTER;
+    //     int32_t x_ofs = 0;
+    //     int32_t y_ofs;
+    // };
+
 protected:
     ILvglDisplayConsumer(const IDisplayConsumer::Zone* zones, uint8_t zoneCount,
                          const lv_font_t* titleFont, const lv_font_t* subtextFont);

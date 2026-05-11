@@ -12,7 +12,7 @@ public:
     // TODO: Add this to the constructor as an array to match the text indeces.
     // struct FontConfig {
     //     const lv_font_t* font;
-    //     uint8_t darkness = 255;
+    //     uint8_t brightness = 255;
     //     lv_align_t align = LV_ALIGN_CENTER;
     //     int32_t x_ofs = 0;
     //     int32_t y_ofs;

@@ -11,12 +11,12 @@ constexpr const char* TAG = "Hub75Display";
 
 Hub75LvglDisplayConsumer::Hub75LvglDisplayConsumer(const Hub75Config& config,
                                                    const IDisplayConsumer::Zone* zones,
-                                                   uint8_t zoneCount)
+                                                   uint8_t zoneCount, bool screentest)
     : ILvglDisplayConsumer(zones, zoneCount, &lv_font_montserrat_16, &lv_font_montserrat_10),
       _config(config),
       _driver(_config)
 {
-    finishInit(initHardware());
+    finishInit(initHardware(screentest));
 }
 
 Hub75LvglDisplayConsumer::~Hub75LvglDisplayConsumer() {

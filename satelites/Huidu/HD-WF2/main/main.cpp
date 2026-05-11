@@ -3,6 +3,8 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
+
+
 #include "platform/Platform.hpp"
 #include "config/NvsSettingsStore.hpp"
 #include "config/DeviceProfile.hpp"
@@ -16,12 +18,17 @@
 //? START testimports
 
 // #include "hub75.h"
-#include "board_config.h"
 #include <esp_log.h>
 #include <lvgl.h>
 // #include <freertos/FreeRTOS.h>  // NOLINT(misc-header-include-cycle)
 // #include <freertos/task.h>
 #include <freertos/semphr.h>
+
+// ? add below?
+// #include "hub75.h"
+// #include "sdkconfig.h"
+// #include <esp_log.h>
+// #include <cstdio>
 
 //? End testimports
 

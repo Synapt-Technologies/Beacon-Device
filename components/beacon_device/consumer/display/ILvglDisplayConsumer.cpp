@@ -59,6 +59,8 @@ void ILvglDisplayConsumer::buildUi() {
         return;
     }
 
+    lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
     lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
 
     for (uint8_t i = 0; i < _zoneCount; i++) {

@@ -9,20 +9,12 @@ CONFIG_ESP32S2_KEEP_USB_ALIVE=y
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 
-# Use LVGL Kconfig settings instead of lv_conf.h
-CONFIG_LV_CONF_SKIP=y
-
 # Use system malloc (ESP-IDF heap) instead of LVGL's 64 KB static DRAM pool
 CONFIG_LV_USE_BUILTIN_MALLOC=n
 CONFIG_LV_USE_CLIB_MALLOC=y
 
 # Don't compile LVGL example files (they contain large static canvas buffers)
 CONFIG_LV_BUILD_EXAMPLES=n
-
-# Fonts used by CYDDisplayConsumer
-CONFIG_LV_FONT_MONTSERRAT_16=y
-CONFIG_LV_FONT_MONTSERRAT_28=y
-CONFIG_LV_FONT_MONTSERRAT_48=y
 
 # Bump FreeRTOS tick to 1 ms so esp_lvgl_port 5 ms timer is accurate
 CONFIG_FREERTOS_HZ=1000

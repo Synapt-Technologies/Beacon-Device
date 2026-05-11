@@ -1,0 +1,10 @@
+# Hidden symbol — exists only to pull in LVGL dependencies required by the
+# beacon_device display consumers via Kconfig's select mechanism.
+config BEACON_DEVICE_LVGL_DEPS
+    bool
+    default y
+    select LV_CONF_SKIP
+    select LV_FONT_MONTSERRAT_10
+    select LV_FONT_MONTSERRAT_16
+    select LV_FONT_MONTSERRAT_28
+    select LV_FONT_MONTSERRAT_48

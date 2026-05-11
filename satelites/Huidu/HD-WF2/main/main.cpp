@@ -172,6 +172,8 @@ extern "C" void app_main() {
 
   static const IDisplayConsumer::Zone hub75Zones[] = {
     {   0,   0,     64,  32,  0, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // background (always visible)
+    {   0,   0,     7,   32,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // background (always visible)
+    {   59,  0,     7,   32,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // background (always visible)
   };
   IConsumer* consumer1 = new Hub75LvglDisplayConsumer(config, hub75Zones, 7, true);
 

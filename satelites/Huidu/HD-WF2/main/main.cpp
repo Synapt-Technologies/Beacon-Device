@@ -22,6 +22,8 @@
 
 static const char *const TAG = "color_test";
 
+#define CONFIG_HUB75_BOARD_HUIDU_HD_WF2
+
 // Duration for each test pattern in milliseconds
 static const uint32_t TEST_DURATION_MS = 3000;
 static const uint32_t QUICK_DURATION_MS = 1500;

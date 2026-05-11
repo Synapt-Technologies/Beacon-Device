@@ -42,10 +42,10 @@ lv_display_t* Hub75LvglDisplayConsumer::initHardware(bool screentest) {
 
     if (screentest) {
         const uint16_t W = _driver.get_width();
-        const uint16_t numRows = _driver.get_height() / 4;
+        const uint16_t numRows = _driver.get_height() / 16;
         
         auto write_row = [&](uint8_t row, uint8_t r, uint8_t g, uint8_t b) {
-            for (uint8_t subrow = 0; subrow < 4; subrow++) {
+            for (uint8_t subrow = 0; subrow < 16; subrow++) {
                 _driver.fill(0, row + subrow * numRows, W, 1, r, g, b);
             }
         };
@@ -58,14 +58,14 @@ lv_display_t* Hub75LvglDisplayConsumer::initHardware(bool screentest) {
         for (uint16_t row = 0; row < numRows; row++) {
             _driver.clear();
             write_row(row, 255, 0, 0);
-            vTaskDelay(pdMS_TO_TICKS(50));
+            vTaskDelay(pdMS_TO_TICKS(75));
             write_row(row, 0, 255, 0);
-            vTaskDelay(pdMS_TO_TICKS(50));
+            vTaskDelay(pdMS_TO_TICKS(75));
             write_row(row, 0, 0, 255);
-            vTaskDelay(pdMS_TO_TICKS(50));
+            vTaskDelay(pdMS_TO_TICKS(75));
             write_row(row, 255, 255, 255);
             ESP_LOGI(TAG, "  row %u/%u", row, numRows - 1);
-            vTaskDelay(pdMS_TO_TICKS(100));
+            vTaskDelay(pdMS_TO_TICKS(75));
         }
     }
     _driver.clear();
@@ -96,7 +96,7 @@ lv_display_t* Hub75LvglDisplayConsumer::initHardware(bool screentest) {
     }
 
     lv_display_set_draw_buffers(disp, draw_buf, nullptr);
-    lv_display_set_render_mode(disp, LV_DISPLAY_RENDER_MODE_FULL);
+    lv_display_set_render_mode(disp, LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_user_data(disp, this);
     lv_display_set_flush_cb(disp, flushCb);
 

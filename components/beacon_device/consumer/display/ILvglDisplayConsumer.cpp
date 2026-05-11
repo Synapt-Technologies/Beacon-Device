@@ -12,16 +12,18 @@ static bool s_lvgl_inited = false;
 // ── Construction / destruction ───────────────────────────────────────
 
 ILvglDisplayConsumer::ILvglDisplayConsumer(const IDisplayConsumer::Zone* zones, uint8_t zoneCount,
-                                           const lv_font_t* titleFont, const lv_font_t* subtextFont)
+                                           const FontConfig* labelConfigs, uint8_t labelCount)
     : _displayZones(zones), _zoneCount(zoneCount),
-      _titleFont(titleFont), _subtextFont(subtextFont)
+      _labelConfigs(labelConfigs), _labelCount(labelCount)
 {
+    _labels   = new lv_obj_t*[_labelCount]();
     _zoneObjs = new lv_obj_t*[_zoneCount]();
     rebuildLut();
 }
 
 ILvglDisplayConsumer::~ILvglDisplayConsumer() {
     // _disp must already be removed by the derived destructor (to preserve hardware order).
+    delete[] _labels;
     delete[] _zoneObjs;
 }
 
@@ -76,20 +78,14 @@ void ILvglDisplayConsumer::buildUi() {
         lv_obj_remove_flag(_zoneObjs[i], LV_OBJ_FLAG_SCROLLABLE);
     }
 
-    // TODO: Make spacing configurable by the extended classes.
-    const int32_t dh = lv_display_get_vertical_resolution(_disp);
-
-    _labels[0] = lv_label_create(scr);
-    lv_obj_set_style_text_font(_labels[0], _titleFont, 0);
-    lv_obj_set_style_text_color(_labels[0], lv_color_white(), 0);
-    lv_label_set_text(_labels[0], "");
-    lv_obj_align(_labels[0], LV_ALIGN_CENTER, 0, dh / -6);
-
-    _labels[1] = lv_label_create(scr);
-    lv_obj_set_style_text_font(_labels[1], _subtextFont, 0);
-    lv_obj_set_style_text_color(_labels[1], lv_color_white(), 0);
-    lv_label_set_text(_labels[1], "");
-    lv_obj_align(_labels[1], LV_ALIGN_CENTER, 0, dh / 4);
+    for (uint8_t i = 0; i < _labelCount; i++) {
+        const FontConfig& cfg = _labelConfigs[i];
+        _labels[i] = lv_label_create(scr);
+        lv_obj_set_style_text_font(_labels[i], cfg.font, 0);
+        lv_obj_set_style_text_color(_labels[i], lv_color_white(), 0);
+        lv_label_set_text(_labels[i], "");
+        lv_obj_align(_labels[i], cfg.align, cfg.x_ofs, cfg.y_ofs);
+    }
 
     lv_obj_invalidate(lv_display_get_screen_active(_disp));
     lv_refr_now(_disp);
@@ -118,10 +114,13 @@ void ILvglDisplayConsumer::setColor(uint8_t r, uint8_t g, uint8_t b) {
             lv_obj_set_style_bg_opa(_zoneObjs[i], LV_OPA_TRANSP, 0);
         }
     }
-    lv_obj_set_style_text_color(_labels[0], contrastTextColor(sr, sg, sb, 255), 0);
-    lv_obj_set_style_text_color(_labels[1], contrastTextColor(sr, sg, sb, 100), 0);
-
-    if (!isRevertPending(0)) applySlot(0);
+    for (uint8_t i = 0; i < _labelCount; i++) {
+        lv_obj_set_style_text_color(_labels[i],
+            contrastTextColor(sr, sg, sb, _labelConfigs[i].brightness), 0);
+    }
+    for (uint8_t i = 0; i < _labelCount; i++) {
+        if (!isRevertPending(i)) applySlot(i);
+    }
 
     lv_refr_now(_disp);
 
@@ -185,7 +184,7 @@ uint8_t ILvglDisplayConsumer::getAlertStepCount(DeviceAlertAction action) {
 // ── IDisplayConsumer override ────────────────────────────────────────
 
 void ILvglDisplayConsumer::onTextChanged(uint8_t index, const char* text) {
-    if (index >= 2 || !_labels[index]) return;
+    if (index >= _labelCount || !_labels[index]) return;
     if (!lvgl_port_lock(portMAX_DELAY)) return;
     lv_label_set_text(_labels[index], text);
     lvgl_port_unlock();
@@ -194,6 +193,7 @@ void ILvglDisplayConsumer::onTextChanged(uint8_t index, const char* text) {
 // ── Private helpers ──────────────────────────────────────────────────
 
 void ILvglDisplayConsumer::applySlot(uint8_t index) {
+    if (index >= _labelCount || !_labels[index]) return;
     lv_label_set_text(_labels[index], getBaseText(index));
 }
 

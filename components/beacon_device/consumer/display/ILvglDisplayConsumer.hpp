@@ -5,22 +5,23 @@
 
 class ILvglDisplayConsumer : public IDisplayConsumer {
 public:
+    struct FontConfig {
+        const lv_font_t* font;
+        uint8_t    brightness = 255;
+        lv_align_t align      = LV_ALIGN_CENTER;
+        int32_t    x_ofs      = 0;
+        int32_t    y_ofs      = 0;
+    };
+
     ~ILvglDisplayConsumer() override;
 
     void init() override;
 
-    // TODO: Add this to the constructor as an array to match the text indeces.
-    // struct FontConfig {
-    //     const lv_font_t* font;
-    //     uint8_t brightness = 255;
-    //     lv_align_t align = LV_ALIGN_CENTER;
-    //     int32_t x_ofs = 0;
-    //     int32_t y_ofs;
-    // };
+    uint8_t labelCount() const override { return _labelCount; }
 
 protected:
     ILvglDisplayConsumer(const IDisplayConsumer::Zone* zones, uint8_t zoneCount,
-                         const lv_font_t* titleFont, const lv_font_t* subtextFont);
+                         const FontConfig* labelConfigs, uint8_t labelCount);
 
     virtual lv_display_t* initHardware() = 0;
 
@@ -53,10 +54,10 @@ private:
     static lv_color_t contrastTextColor(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness = 255);
 
     const IDisplayConsumer::Zone* _displayZones;
-    uint8_t          _zoneCount;
-    const lv_font_t* _titleFont;
-    const lv_font_t* _subtextFont;
+    uint8_t           _zoneCount;
+    const FontConfig* _labelConfigs;   // non-owning
+    uint8_t           _labelCount;
 
-    lv_obj_t**  _zoneObjs  = nullptr;
-    lv_obj_t*   _labels[2] = {};
+    lv_obj_t** _zoneObjs = nullptr;
+    lv_obj_t** _labels   = nullptr;    // dynamic, size = _labelCount
 };

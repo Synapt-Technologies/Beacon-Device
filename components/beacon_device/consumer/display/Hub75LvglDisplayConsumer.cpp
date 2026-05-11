@@ -42,6 +42,20 @@ lv_display_t* Hub75LvglDisplayConsumer::initHardware() {
     ESP_LOGI(TAG, "HUB75 driver initialized: %ux%u pixels",
              _driver.get_width(), _driver.get_height());
 
+    const uint16_t W = _driver.get_width();
+    const uint16_t numRows = _driver.get_height() / 2;  // 16 for standard two-scan
+
+    ESP_LOGI(TAG, "Row-scan test: sweeping green line through rows 0-%u (1s each)...", numRows - 1);
+    ESP_LOGI(TAG, "  Watch the panel: line should move down each second.");
+    ESP_LOGI(TAG, "  If same two rows stay lit every step -> address lines stuck at 0.");
+
+    for (uint16_t row = 0; row < numRows; row++) {
+        _driver.clear();
+        _driver.fill(0, row,          W, 1, 0, 255, 0);   // green line in upper half
+        _driver.fill(0, row + numRows, W, 1, 255, 0, 0);  // red line in lower half
+        ESP_LOGI(TAG, "  row %u/%u", row, numRows - 1);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
     _driver.clear();
 
     ensureLvglPortInited();
@@ -85,7 +99,6 @@ void Hub75LvglDisplayConsumer::flushCb(lv_display_t* disp, const lv_area_t* area
     const uint16_t y = static_cast<uint16_t>(area->y1);
     const uint16_t w = static_cast<uint16_t>(area->x2 - area->x1 + 1);
     const uint16_t h = static_cast<uint16_t>(area->y2 - area->y1 + 1);
-
     self->_driver.draw_pixels(x, y, w, h, px_map, Hub75PixelFormat::RGB565);
 
     if (self->_config.double_buffer) {

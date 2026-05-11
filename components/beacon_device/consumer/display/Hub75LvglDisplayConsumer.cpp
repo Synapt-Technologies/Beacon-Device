@@ -50,9 +50,7 @@ lv_display_t* Hub75LvglDisplayConsumer::initHardware(bool screentest) {
             }
         };
 
-        ESP_LOGI(TAG, "Row-scan test: sweeping green line through rows 0-%u (1s each)...", numRows - 1);
-        ESP_LOGI(TAG, "  Watch the panel: line should move down each second.");
-        ESP_LOGI(TAG, "  If same two rows stay lit every step -> address lines stuck at 0.");
+        ESP_LOGI(TAG, "Row-scan test...", numRows - 1);
 
         // TODO: Cleanup?
         for (uint16_t row = 0; row < numRows; row++) {

@@ -1,21 +1,88 @@
-// SPDX-FileCopyrightText: 2025 Stuart Parmenter
-// SPDX-License-Identifier: MIT
-
-// @file main.cpp
-// @brief LVGL integration with HUB75 driver
-//
-// Based on ESP-IDF PARLIO RGB LED matrix LVGL example
-// Adapted for HUB75 driver with raw LVGL API
-
+#include "sdkconfig.h"
 #include "hub75.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+
+#include "platform/Platform.hpp"
+#include "config/NvsSettingsStore.hpp"
+#include "config/DeviceProfile.hpp"
+#include "networkConnection/StaWifiConnection.hpp"
+#include "beaconConnection/TcpMqttBeaconConnection.hpp"
+// #include "consumer/display/Hub75LvglDisplayConsumer.hpp"
+#include "httpServer/EspHttpServer.hpp"
+
+#include "orchestrator/SateliteOrchestrator.hpp"
+
+//? START testimports
+
+// #include "hub75.h"
 #include "board_config.h"
 #include <esp_log.h>
 #include <lvgl.h>
-#include <freertos/FreeRTOS.h>  // NOLINT(misc-header-include-cycle)
-#include <freertos/task.h>
+// #include <freertos/FreeRTOS.h>  // NOLINT(misc-header-include-cycle)
+// #include <freertos/task.h>
 #include <freertos/semphr.h>
 
-static const char *const TAG = "lvgl_demo";
+//? End testimports
+
+static const char *const TAG = "HD-WF2 Satelite";
+
+static inline Hub75Config getHub75Config() {
+  Hub75Config config = {};
+
+  // Panel dimensions
+  config.panel_width = 64;
+  config.panel_height = 32;
+
+  // Scan wiring (scan rate is determined automatically from panel_height)
+  config.scan_wiring = Hub75ScanWiring::STANDARD_TWO_SCAN;
+  // Shift driver
+  config.shift_driver = Hub75ShiftDriver::GENERIC;
+
+  // Huidu HD-WF2
+  config.pins.r1 = 2;
+  config.pins.g1 = 6;
+  config.pins.b1 = 10;
+  config.pins.r2 = 3;
+  config.pins.g2 = 7;
+  config.pins.b2 = 11;
+  config.pins.a = 39;
+  config.pins.b = 38;
+  config.pins.c = 37;
+  config.pins.d = 36;
+  config.pins.e = 21;
+  config.pins.lat = 33;
+  config.pins.oe = 35;
+  config.pins.clk = 34;
+
+
+  // Multi-panel layout
+  config.layout_rows = 1;
+  config.layout_cols = 1;
+  config.layout = Hub75PanelLayout::HORIZONTAL;
+
+  config.rotation = Hub75Rotation::ROTATE_0;
+
+  config.output_clock_speed = Hub75ClockSpeed::HZ_10M;
+
+  // Performance settings
+  config.min_refresh_rate = 60;
+  config.brightness = 255;
+
+  // Timing settings
+  config.latch_blanking = 1;
+
+  config.double_buffer = false;
+
+  config.clk_phase_inverted = false;
+
+  // Note: Gamma correction is handled at compile-time via Kconfig (HUB75_GAMMA_MODE)
+  // and applied in color_lut.cpp during LUT generation. No runtime config needed.
+
+  return config;
+}
+
+//? START testcode
 
 // Global HUB75 driver instance (needed in flush callback)
 static Hub75Driver *g_driver = nullptr;
@@ -92,11 +159,13 @@ static void lvgl_timer_task(void *arg) {
   }
 }
 
+
+//? End testcode
+
 extern "C" void app_main() {
   ESP_LOGI(TAG, "HUB75 LVGL Simple Demo Starting...");
 
-  // Load configuration from menuconfig
-  Hub75Config config = getMenuConfigSettings();
+  Hub75Config config = getHub75Config();
 
   ESP_LOGI(TAG, "Configuration:");
   ESP_LOGI(TAG, "  Panel: %dx%d pixels", config.panel_width, config.panel_height);

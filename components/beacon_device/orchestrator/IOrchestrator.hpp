@@ -36,10 +36,12 @@ public:
 
     virtual ~IOrchestrator() = default;
 
-    virtual void start() = 0;
-    virtual void stop()  = 0;
+    void start();
+    virtual void stop() = 0;
 
 protected:
+    static constexpr uint32_t STARTUP_STACK_SIZE = 8192;
+    virtual void doStart() = 0;
     Config               _config;
     const DeviceProfile& _profile;
     INetworkConnection&  _network;

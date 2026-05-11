@@ -6,6 +6,8 @@
 // Each consumer has its own MQTT subscription and displays an independent tally state.
 class NodeOrchestrator : public IOrchestrator {
 public:
-    void start() override {}
-    void stop()  override {}
+    void stop() override {}
+
+protected:
+    void doStart() override {}
 };

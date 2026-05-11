@@ -11,13 +11,11 @@ constexpr const char* TAG = "Hub75Display";
 
 Hub75LvglDisplayConsumer::Hub75LvglDisplayConsumer(const Hub75Config& config,
                                                    const IDisplayConsumer::Zone* zones,
-                                                   uint8_t zoneCount, bool screentest)
+                                                   uint8_t zoneCount)
     : ILvglDisplayConsumer(zones, zoneCount, &lv_font_montserrat_22, &lv_font_unscii_8),
       _config(config),
       _driver(_config)
-{
-    finishInit(initHardware(screentest));
-}
+{}
 
 Hub75LvglDisplayConsumer::~Hub75LvglDisplayConsumer() {
     if (_disp) {
@@ -31,7 +29,7 @@ Hub75LvglDisplayConsumer::~Hub75LvglDisplayConsumer() {
 
 // ── Hardware init ────────────────────────────────────────────────────
 
-lv_display_t* Hub75LvglDisplayConsumer::initHardware(bool screentest) {
+lv_display_t* Hub75LvglDisplayConsumer::initHardware() {
     if (!_driver.begin()) {
         ESP_LOGE(TAG, "Failed to initialize HUB75 driver!");
         return nullptr;
@@ -40,19 +38,18 @@ lv_display_t* Hub75LvglDisplayConsumer::initHardware(bool screentest) {
     ESP_LOGI(TAG, "HUB75 driver initialized: %ux%u pixels",
              _driver.get_width(), _driver.get_height());
 
-    if (screentest) {
+#ifdef SCREENTEST
+    {
         const uint16_t W = _driver.get_width();
         const uint16_t numRows = _driver.get_height() / 16;
-        
+
         auto write_row = [&](uint8_t row, uint8_t r, uint8_t g, uint8_t b) {
             for (uint8_t subrow = 0; subrow < 16; subrow++) {
                 _driver.fill(0, row + subrow * numRows, W, 1, r, g, b);
             }
         };
 
-        ESP_LOGI(TAG, "Row-scan test...", numRows - 1);
-
-        // TODO: Cleanup?
+        ESP_LOGI(TAG, "Row-scan test...");
         for (uint16_t row = 0; row < numRows; row++) {
             _driver.clear();
             write_row(row, 255, 0, 0);
@@ -66,6 +63,7 @@ lv_display_t* Hub75LvglDisplayConsumer::initHardware(bool screentest) {
             vTaskDelay(pdMS_TO_TICKS(75));
         }
     }
+#endif
     _driver.clear();
 
     ensureLvglPortInited();

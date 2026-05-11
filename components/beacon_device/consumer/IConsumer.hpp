@@ -14,6 +14,8 @@ public:
 
     virtual IDisplayConsumer* asDisplay() { return nullptr; }
 
+    virtual void init() {}
+
     // Sets all LEDs regardless of target
     virtual void setState(const TallyState state) {
         _state = state;

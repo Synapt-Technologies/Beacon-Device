@@ -25,6 +25,13 @@ ILvglDisplayConsumer::~ILvglDisplayConsumer() {
     delete[] _zoneObjs;
 }
 
+// ── Public init ──────────────────────────────────────────────────────
+
+void ILvglDisplayConsumer::init() {
+    _disp = initHardware();
+    buildUi();
+}
+
 // ── Protected helpers ────────────────────────────────────────────────
 
 void ILvglDisplayConsumer::ensureLvglPortInited() {
@@ -35,11 +42,6 @@ void ILvglDisplayConsumer::ensureLvglPortInited() {
     port.timer_period_ms = 5;
     ESP_ERROR_CHECK(lvgl_port_init(&port));
     s_lvgl_inited = true;
-}
-
-void ILvglDisplayConsumer::finishInit(lv_display_t* disp) {
-    _disp = disp;
-    buildUi();
 }
 
 // ── UI construction ──────────────────────────────────────────────────

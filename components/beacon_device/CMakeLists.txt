@@ -11,6 +11,7 @@ idf_component_register(
         "httpServer/EspHttpServer.cpp"
         "httpServer/HttpHandlers.cpp"
         "networkConnection/StaWifiConnection.cpp"
+        "orchestrator/IOrchestrator.cpp"
         "orchestrator/SateliteOrchestrator.cpp"
         "beaconConnection/IBeaconConnection.hpp"
         "beaconConnection/TcpMqttBeaconConnection.hpp"

@@ -14,8 +14,10 @@ public:
         : IOrchestrator(store, profile, network, beacon, consumers, consumerCount, http)
     {}
 
-    void start() override;
-    void stop()  override;
+    void stop() override;
+
+protected:
+    void doStart() override;
 
 private:
     static constexpr char TAG[] = "SateliteOrch";

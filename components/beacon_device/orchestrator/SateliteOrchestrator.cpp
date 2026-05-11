@@ -10,8 +10,11 @@
 
 // ? Lifecycle
 
-void SateliteOrchestrator::start()
+void SateliteOrchestrator::doStart()
 {
+    for (int i = 0; i < _consumerCount; i++)
+        _consumers[i]->init();
+
     // TODO Add checks. e.g. deviceType can only be Single in this orchestrator.
 
 

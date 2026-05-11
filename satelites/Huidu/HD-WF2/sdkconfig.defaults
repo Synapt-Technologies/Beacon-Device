@@ -18,4 +18,4 @@ CONFIG_BOOTLOADER_LOG_COLORS=y
 
 # main task allocates SateliteOrchestrator + EspHttpServer on the stack and
 # calls into LVGL during display init — 3584 bytes is not enough
-CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+# CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192

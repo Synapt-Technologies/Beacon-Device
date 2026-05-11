@@ -21,10 +21,10 @@ public:
     Ili9341LvglDisplayConsumer(const IDisplayConsumer::Zone* zones, uint8_t zoneCount);
     ~Ili9341LvglDisplayConsumer() override;
 
+protected:
+    lv_display_t* initHardware() override;
+
 private:
-    // Initialises backlight, SPI bus, ILI9341 panel, and registers the display
-    // with lvgl_port. Returns the resulting lv_display_t* passed to finishInit().
-    lv_display_t* initHardware();
 
     esp_lcd_panel_io_handle_t _ioHandle    = nullptr;
     esp_lcd_panel_handle_t    _panelHandle = nullptr;

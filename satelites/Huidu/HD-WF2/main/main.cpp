@@ -192,7 +192,7 @@ extern "C" void app_main() {
   //   {   54,  3,  10, 26,  2, DeviceAlertTarget::TALENT,    TallyState::NONE,    true },  // Right Bar
   //   {   10,  3,  44, 26,  0, DeviceAlertTarget::TALENT,    TallyState::PROGRAM, true },  // Center 
   // };
-  IConsumer* consumer1 = new Hub75LvglDisplayConsumer(config, hub75Zones, 9, true);
+  IConsumer* consumer1 = new Hub75LvglDisplayConsumer(config, hub75Zones, 9);
 
   IConsumer* consumers[] = { consumer1 };
 

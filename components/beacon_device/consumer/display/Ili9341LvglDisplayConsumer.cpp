@@ -24,9 +24,7 @@ constexpr int LCD_DRAW_BUFFER_LINES     = 80;
 Ili9341LvglDisplayConsumer::Ili9341LvglDisplayConsumer(const IDisplayConsumer::Zone* zones,
                                                        uint8_t zoneCount)
     : ILvglDisplayConsumer(zones, zoneCount, &helvatica_140, &lv_font_montserrat_28)
-{
-    finishInit(initHardware());
-}
+{}
 
 Ili9341LvglDisplayConsumer::~Ili9341LvglDisplayConsumer() {
     // Remove display from LVGL before releasing the hardware it references.

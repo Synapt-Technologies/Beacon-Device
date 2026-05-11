@@ -7,6 +7,8 @@ class ILvglDisplayConsumer : public IDisplayConsumer {
 public:
     ~ILvglDisplayConsumer() override;
 
+    void init() override;
+
     // TODO: Add this to the constructor as an array to match the text indeces.
     // struct FontConfig {
     //     const lv_font_t* font;
@@ -20,8 +22,7 @@ protected:
     ILvglDisplayConsumer(const IDisplayConsumer::Zone* zones, uint8_t zoneCount,
                          const lv_font_t* titleFont, const lv_font_t* subtextFont);
 
-    // Call from derived constructor after hardware init returns a valid lv_display_t*.
-    void finishInit(lv_display_t* disp);
+    virtual lv_display_t* initHardware() = 0;
 
     // Call before lvgl_port_add_disp() to ensure the port is initialised exactly once.
     static void ensureLvglPortInited();

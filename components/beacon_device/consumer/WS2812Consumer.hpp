@@ -1,7 +1,7 @@
 #pragma once
 
 #include "led_strip.h"
-#include "consumer/IConsumer.hpp"
+#include "consumer/ILutConsumer.hpp"
 #include "driver/gpio.h"
 #include "freertos/semphr.h"
 
@@ -12,7 +12,7 @@ struct StripSection { // Todo: Brightness section? -> Then the way they are iter
     DeviceAlertTarget   target;
 };
 
-class WS2812Consumer : public IConsumer {
+class WS2812Consumer : public ILutConsumer {
 
 public:
     WS2812Consumer(led_strip_handle_t strip, uint8_t ledCount, StripSection sections[], uint8_t sectionCount) {
@@ -21,7 +21,6 @@ public:
         _sections = sections;
         _sectionCount = sectionCount;
         _mutex = xSemaphoreCreateMutex();
-        rebuildLut();
     }
     ~WS2812Consumer() {
         if (_mutex) vSemaphoreDelete(_mutex);

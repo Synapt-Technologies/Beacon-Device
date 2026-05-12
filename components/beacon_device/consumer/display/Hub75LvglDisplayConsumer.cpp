@@ -19,6 +19,12 @@ Hub75LvglDisplayConsumer::Hub75LvglDisplayConsumer(const Hub75Config& config,
       _driver(_config)
 {}
 
+void Hub75LvglDisplayConsumer::setBrightness(uint8_t brightness) {
+    _brightness = brightness;
+    _driver.set_brightness(brightness);
+    applyState(_state);
+}
+
 Hub75LvglDisplayConsumer::~Hub75LvglDisplayConsumer() {
     if (_disp) {
         if (lvgl_port_lock(portMAX_DELAY)) {
@@ -99,6 +105,10 @@ lv_display_t* Hub75LvglDisplayConsumer::initHardware() {
     lv_display_set_flush_cb(disp, flushCb);
 
     lvgl_port_unlock();
+
+    // Sync driver brightness to IConsumer default (driver default is 128, IConsumer default is 255).
+    _driver.set_brightness(_brightness);
+
     return disp;
 }
 

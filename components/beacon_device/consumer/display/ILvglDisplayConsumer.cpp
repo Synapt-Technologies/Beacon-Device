@@ -18,7 +18,6 @@ ILvglDisplayConsumer::ILvglDisplayConsumer(const IDisplayConsumer::Zone* zones, 
 {
     _labels   = new lv_obj_t*[_textCount]();
     _zoneObjs = new lv_obj_t*[_zoneCount]();
-    rebuildLut();
 }
 
 ILvglDisplayConsumer::~ILvglDisplayConsumer() {
@@ -98,10 +97,7 @@ void ILvglDisplayConsumer::buildUi() {
 void ILvglDisplayConsumer::setColor(uint8_t r, uint8_t g, uint8_t b) {
     if (!_zoneObjs || !_labels[0] || !lvgl_port_lock(portMAX_DELAY)) return;
 
-    const uint8_t sr = scale_brightness(r);
-    const uint8_t sg = scale_brightness(g);
-    const uint8_t sb = scale_brightness(b);
-    const lv_color_t col = lv_color_make(sr, sg, sb);
+    const lv_color_t col = lv_color_make(r, g, b);  // raw — hardware dims the entire framebuffer
 
     for (uint8_t i = 0; i < _zoneCount; i++) {
         const IDisplayConsumer::Zone& z = _displayZones[i];
@@ -116,7 +112,7 @@ void ILvglDisplayConsumer::setColor(uint8_t r, uint8_t g, uint8_t b) {
     }
     for (uint8_t i = 0; i < _textCount; i++) {
         lv_obj_set_style_text_color(_labels[i],
-            contrastTextColor(sr, sg, sb, _textConfigs[i].brightness), 0);
+            contrastTextColor(r, g, b, _textConfigs[i].brightness), 0);
     }
     for (uint8_t i = 0; i < _textCount; i++) {
         if (!isRevertPending(i)) applySlot(i);
@@ -146,10 +142,7 @@ void ILvglDisplayConsumer::setAlertStep(DeviceAlertAction action,
             if (z.stateColored && _state >= z.minState) {
                 uint8_t r, g, b;
                 stateToColor(_state, r, g, b);
-                lv_obj_set_style_bg_color(_zoneObjs[i],
-                    lv_color_make(scale_brightness(r),
-                                  scale_brightness(g),
-                                  scale_brightness(b)), 0);
+                lv_obj_set_style_bg_color(_zoneObjs[i], lv_color_make(r, g, b), 0);
                 lv_obj_set_style_bg_opa(_zoneObjs[i], LV_OPA_COVER, 0);
             } else {
                 lv_obj_set_style_bg_opa(_zoneObjs[i], LV_OPA_TRANSP, 0);
@@ -157,10 +150,7 @@ void ILvglDisplayConsumer::setAlertStep(DeviceAlertAction action,
         } else {
             uint8_t r, g, b;
             stateToColor(s, r, g, b);
-            lv_obj_set_style_bg_color(_zoneObjs[i],
-                lv_color_make(scale_brightness(r),
-                              scale_brightness(g),
-                              scale_brightness(b)), 0);
+            lv_obj_set_style_bg_color(_zoneObjs[i], lv_color_make(r, g, b), 0);
             lv_obj_set_style_bg_opa(_zoneObjs[i], LV_OPA_COVER, 0);
         }
     }

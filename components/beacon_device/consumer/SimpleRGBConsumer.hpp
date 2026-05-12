@@ -1,10 +1,10 @@
 #pragma once
 
-#include "consumer/IConsumer.hpp"
+#include "consumer/ILutConsumer.hpp"
 #include "driver/gpio.h"
 
 
-class SimpleRGBConsumer : public IConsumer {
+class SimpleRGBConsumer : public ILutConsumer {
 
 public:
     SimpleRGBConsumer(gpio_num_t rPin, gpio_num_t gPin, gpio_num_t bPin, DeviceAlertTarget target) {
@@ -31,10 +31,14 @@ private:
     DeviceAlertTarget _target;
 
 
-    void setColor(uint8_t r, uint8_t g, uint8_t b) override { // TODO PWM
-        gpio_set_level(_rPin, r > 0 ? 0 : 1);
-        gpio_set_level(_gPin, g > 0 ? 0 : 1);
-        gpio_set_level(_bPin, b > 0 ? 0 : 1);
+    void setColor(uint8_t r, uint8_t g, uint8_t b) override {
+        const uint8_t sr = scale_brightness(r);
+        const uint8_t sg = scale_brightness(g);
+        const uint8_t sb = scale_brightness(b);
+        // Binary GPIO. To add PWM: replace with ledc_set_duty/ledc_update_duty per pin.
+        gpio_set_level(_rPin, sr > 0 ? 0 : 1);
+        gpio_set_level(_gPin, sg > 0 ? 0 : 1);
+        gpio_set_level(_bPin, sb > 0 ? 0 : 1);
     }
 
 

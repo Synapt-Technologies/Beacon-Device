@@ -4,7 +4,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <stdint.h>
-#include <cmath>
 
 class IDisplayConsumer; // forward declaration for asDisplay()
 
@@ -36,7 +35,6 @@ public:
 
     virtual void setBrightness(uint8_t brightness) {
         _brightness = brightness;
-        rebuildLut();
         this->applyState(this->_state);
     }
 
@@ -45,20 +43,6 @@ protected:
     TallyState _state = TallyState::NONE;
 
     TaskHandle_t _alertTask = {};
-    uint8_t _lut[256] = {};
-
-    void rebuildLut() {
-        _lut[0] = 0;
-        for (int i = 1; i < 256; i++) {
-            float t = (i - 1) / 254.0f;
-            float out = 255.0f * powf(t, 2.8f) * _brightness / 255.0f;
-            _lut[i] = static_cast<uint8_t>(out + 0.5f);
-        }
-    }
-
-    uint8_t scale_brightness(uint8_t value) const {
-        return _lut[value];
-    }
 
     virtual void setColor(uint8_t r, uint8_t g, uint8_t b) = 0;
     

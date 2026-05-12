@@ -1,6 +1,7 @@
 #include "consumer/display/Ili9341LvglDisplayConsumer.hpp"
 
 #include "driver/gpio.h"
+#include "driver/ledc.h"
 #include "driver/spi_master.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
@@ -38,16 +39,30 @@ Ili9341LvglDisplayConsumer::~Ili9341LvglDisplayConsumer() {
 
 // ── Hardware init ────────────────────────────────────────────────────
 
+void Ili9341LvglDisplayConsumer::setBrightness(uint8_t brightness) {
+    _brightness = brightness;
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, brightness);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+    applyState(_state);
+}
+
 lv_display_t* Ili9341LvglDisplayConsumer::initHardware() {
-    gpio_config_t bl = {
-        .pin_bit_mask = 1ULL << PIN_BL,
-        .mode         = GPIO_MODE_OUTPUT,
-        .pull_up_en   = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type    = GPIO_INTR_DISABLE,
-    };
-    ESP_ERROR_CHECK(gpio_config(&bl));
-    ESP_ERROR_CHECK(gpio_set_level((gpio_num_t)PIN_BL, 1));
+    ledc_timer_config_t bl_timer = {};
+    bl_timer.speed_mode      = LEDC_LOW_SPEED_MODE;
+    bl_timer.duty_resolution = LEDC_TIMER_8_BIT;
+    bl_timer.timer_num       = LEDC_TIMER_0;
+    bl_timer.freq_hz         = 5000;
+    bl_timer.clk_cfg         = LEDC_AUTO_CLK;
+    ESP_ERROR_CHECK(ledc_timer_config(&bl_timer));
+
+    ledc_channel_config_t bl_ch = {};
+    bl_ch.gpio_num   = PIN_BL;
+    bl_ch.speed_mode = LEDC_LOW_SPEED_MODE;
+    bl_ch.channel    = LEDC_CHANNEL_0;
+    bl_ch.timer_sel  = LEDC_TIMER_0;
+    bl_ch.duty       = _brightness;
+    bl_ch.hpoint     = 0;
+    ESP_ERROR_CHECK(ledc_channel_config(&bl_ch));
 
     spi_bus_config_t bus = {};
     bus.mosi_io_num     = PIN_MOSI;

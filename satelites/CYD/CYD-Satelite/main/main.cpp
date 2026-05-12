@@ -75,6 +75,7 @@ extern "C" void app_main()
     IConsumer* consumer1 = new WS2812Consumer(createLedStrip(), ADD_LED_STRIP_LED_NUMBER, ws2812Sections, 3);
     IConsumer* consumer2 = new SimpleRGBConsumer(FIX_LED_R_GPIO, FIX_LED_G_GPIO, FIX_LED_B_GPIO, DeviceAlertTarget::OPERATOR);
 
+    LV_FONT_DECLARE(helvatica_140);
     static const IDisplayConsumer::Zone cydZones[] = {
         {   0,   0,     320,  240,  0, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // background (always visible)
         {   0,   0,      40,  240,  1, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
@@ -84,7 +85,11 @@ extern "C" void app_main()
         { 160,   0,     120,   10,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // right alert bar
         { 160,   230,   120,   10,  2, DeviceAlertTarget::TALENT,    TallyState::NONE, true }, // left alert bar
     };
-    IConsumer* consumer3 = new Ili9341LvglDisplayConsumer(cydZones, 7);
+    static const ILvglDisplayConsumer::TextConfig cydText[] = {
+        { &helvatica_140,         255, LV_ALIGN_CENTER, 0,  0 },
+        { &lv_font_montserrat_28, 80, LV_ALIGN_CENTER, 0, 70 },
+    };
+    IConsumer* consumer3 = new Ili9341LvglDisplayConsumer(cydZones, 7, cydText, 2);
 
     IConsumer* consumers[] = { consumer1, consumer2, consumer3 };
 

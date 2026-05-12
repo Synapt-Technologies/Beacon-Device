@@ -12,11 +12,11 @@ static bool s_lvgl_inited = false;
 // ── Construction / destruction ───────────────────────────────────────
 
 ILvglDisplayConsumer::ILvglDisplayConsumer(const IDisplayConsumer::Zone* zones, uint8_t zoneCount,
-                                           const FontConfig* labelConfigs, uint8_t labelCount)
+                                           const TextConfig* textConfigs, uint8_t textCount)
     : _displayZones(zones), _zoneCount(zoneCount),
-      _labelConfigs(labelConfigs), _labelCount(labelCount)
+      _textConfigs(textConfigs), _textCount(textCount)
 {
-    _labels   = new lv_obj_t*[_labelCount]();
+    _labels   = new lv_obj_t*[_textCount]();
     _zoneObjs = new lv_obj_t*[_zoneCount]();
     rebuildLut();
 }
@@ -78,8 +78,8 @@ void ILvglDisplayConsumer::buildUi() {
         lv_obj_remove_flag(_zoneObjs[i], LV_OBJ_FLAG_SCROLLABLE);
     }
 
-    for (uint8_t i = 0; i < _labelCount; i++) {
-        const FontConfig& cfg = _labelConfigs[i];
+    for (uint8_t i = 0; i < _textCount; i++) {
+        const TextConfig& cfg = _textConfigs[i];
         _labels[i] = lv_label_create(scr);
         lv_obj_set_style_text_font(_labels[i], cfg.font, 0);
         lv_obj_set_style_text_color(_labels[i], lv_color_white(), 0);
@@ -114,11 +114,11 @@ void ILvglDisplayConsumer::setColor(uint8_t r, uint8_t g, uint8_t b) {
             lv_obj_set_style_bg_opa(_zoneObjs[i], LV_OPA_TRANSP, 0);
         }
     }
-    for (uint8_t i = 0; i < _labelCount; i++) {
+    for (uint8_t i = 0; i < _textCount; i++) {
         lv_obj_set_style_text_color(_labels[i],
-            contrastTextColor(sr, sg, sb, _labelConfigs[i].brightness), 0);
+            contrastTextColor(sr, sg, sb, _textConfigs[i].brightness), 0);
     }
-    for (uint8_t i = 0; i < _labelCount; i++) {
+    for (uint8_t i = 0; i < _textCount; i++) {
         if (!isRevertPending(i)) applySlot(i);
     }
 
@@ -184,7 +184,7 @@ uint8_t ILvglDisplayConsumer::getAlertStepCount(DeviceAlertAction action) {
 // ── IDisplayConsumer override ────────────────────────────────────────
 
 void ILvglDisplayConsumer::onTextChanged(uint8_t index, const char* text) {
-    if (index >= _labelCount || !_labels[index]) return;
+    if (index >= _textCount || !_labels[index]) return;
     if (!lvgl_port_lock(portMAX_DELAY)) return;
     lv_label_set_text(_labels[index], text);
     lvgl_port_unlock();
@@ -193,7 +193,7 @@ void ILvglDisplayConsumer::onTextChanged(uint8_t index, const char* text) {
 // ── Private helpers ──────────────────────────────────────────────────
 
 void ILvglDisplayConsumer::applySlot(uint8_t index) {
-    if (index >= _labelCount || !_labels[index]) return;
+    if (index >= _textCount || !_labels[index]) return;
     lv_label_set_text(_labels[index], getBaseText(index));
 }
 

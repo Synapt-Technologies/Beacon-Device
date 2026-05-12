@@ -16,13 +16,15 @@ ILvglDisplayConsumer::ILvglDisplayConsumer(const IDisplayConsumer::Zone* zones, 
     : _displayZones(zones), _zoneCount(zoneCount),
       _textConfigs(textConfigs), _textCount(textCount)
 {
-    _labels   = new lv_obj_t*[_textCount]();
-    _zoneObjs = new lv_obj_t*[_zoneCount]();
+    _labels       = new lv_obj_t*[_textCount]();
+    _strokeLabels = new lv_obj_t*[_textCount * 4]();
+    _zoneObjs     = new lv_obj_t*[_zoneCount]();
 }
 
 ILvglDisplayConsumer::~ILvglDisplayConsumer() {
     // _disp must already be removed by the derived destructor (to preserve hardware order).
     delete[] _labels;
+    delete[] _strokeLabels;
     delete[] _zoneObjs;
 }
 
@@ -79,6 +81,22 @@ void ILvglDisplayConsumer::buildUi() {
 
     for (uint8_t i = 0; i < _textCount; i++) {
         const TextConfig& cfg = _textConfigs[i];
+        if (cfg.strokeWidth == 0) continue;
+        const int32_t sw    = cfg.strokeWidth;
+        const int32_t dx[4] = { -sw,  sw,   0,   0 };
+        const int32_t dy[4] = {   0,   0, -sw,  sw };
+        for (uint8_t j = 0; j < 4; j++) {
+            lv_obj_t* sl = lv_label_create(scr);
+            lv_obj_set_style_text_font(sl, cfg.font, 0);
+            lv_obj_set_style_text_color(sl, lv_color_black(), 0);
+            lv_label_set_text(sl, "");
+            lv_obj_align(sl, cfg.align, cfg.x_ofs + dx[j], cfg.y_ofs + dy[j]);
+            _strokeLabels[i * 4 + j] = sl;
+        }
+    }
+
+    for (uint8_t i = 0; i < _textCount; i++) {
+        const TextConfig& cfg = _textConfigs[i];
         _labels[i] = lv_label_create(scr);
         lv_obj_set_style_text_font(_labels[i], cfg.font, 0);
         lv_obj_set_style_text_color(_labels[i], lv_color_white(), 0);
@@ -116,6 +134,13 @@ void ILvglDisplayConsumer::applyState(TallyState state) {
     for (uint8_t i = 0; i < _textCount; i++) {
         lv_obj_set_style_text_color(_labels[i],
             contrastTextColor(r, g, b, _textConfigs[i].brightness), 0);
+        if (_textConfigs[i].strokeWidth > 0) {
+            lv_color_t sc = contrastStrokeColor(r, g, b, _textConfigs[i].brightness);
+            for (uint8_t j = 0; j < 4; j++) {
+                if (_strokeLabels[i * 4 + j])
+                    lv_obj_set_style_text_color(_strokeLabels[i * 4 + j], sc, 0);
+            }
+        }
     }
     for (uint8_t i = 0; i < _textCount; i++) {
         if (!isRevertPending(i)) applySlot(i);
@@ -169,6 +194,10 @@ void ILvglDisplayConsumer::onTextChanged(uint8_t index, const char* text) {
     if (index >= _textCount || !_labels[index]) return;
     if (!lvgl_port_lock(portMAX_DELAY)) return;
     lv_label_set_text(_labels[index], text);
+    for (uint8_t j = 0; j < 4; j++) {
+        if (_strokeLabels[index * 4 + j])
+            lv_label_set_text(_strokeLabels[index * 4 + j], text);
+    }
     lvgl_port_unlock();
 }
 
@@ -176,12 +205,22 @@ void ILvglDisplayConsumer::onTextChanged(uint8_t index, const char* text) {
 
 void ILvglDisplayConsumer::applySlot(uint8_t index) {
     if (index >= _textCount || !_labels[index]) return;
-    lv_label_set_text(_labels[index], getBaseText(index));
+    const char* text = getBaseText(index);
+    lv_label_set_text(_labels[index], text);
+    for (uint8_t j = 0; j < 4; j++) {
+        if (_strokeLabels[index * 4 + j])
+            lv_label_set_text(_strokeLabels[index * 4 + j], text);
+    }
 }
 
 // TODO Improve. Take into account the background color in any case.
 lv_color_t ILvglDisplayConsumer::contrastTextColor(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness) {
     uint16_t y = (r * 299u + g * 587u + b * 114u) / 1000u;
     return (y > 180) ? lv_color_make(0, 0, 0) : lv_color_make(brightness, brightness, brightness);
+}
+
+lv_color_t ILvglDisplayConsumer::contrastStrokeColor(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness) {
+    uint16_t y = (r * 299u + g * 587u + b * 114u) / 1000u;
+    return (y > 180) ? lv_color_make(brightness, brightness, brightness) : lv_color_make(0, 0, 0);
 }
 

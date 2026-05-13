@@ -26,6 +26,7 @@ LV_FONT_DECLARE(helvatica_60);
 namespace {
 constexpr const char* TAG = "LvglDisplay";
 
+// TODO look at the fonts used. Small height fonts don't look good on lowres displays. Maybe do UNSCII 8 and 16 for all fonts smaller than 20?
 struct AutoFontEntry { uint8_t size; const lv_font_t* font; };
 static const AutoFontEntry k_autoFonts[] = {
 #if HELVATICA_FONT_140

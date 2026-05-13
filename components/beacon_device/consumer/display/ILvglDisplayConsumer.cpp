@@ -95,7 +95,10 @@ const lv_font_t* ILvglDisplayConsumer::AutoTextConfig::resolveFont(const char* t
 
         lv_point_t pt;
         lv_text_get_size(&pt, text, k_autoFonts[i].font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-        if (pt.x <= maxW) return k_autoFonts[i].font;
+        if (pt.x <= maxW) {
+            ESP_LOGD(TAG, "AutoTextConfig: resolved font size %u for text \"%s\" (width %d <= max %d)", sz, text, pt.x, maxW);
+            return k_autoFonts[i].font;
+        }
         fallback = k_autoFonts[i].font;
     }
     return fallback;

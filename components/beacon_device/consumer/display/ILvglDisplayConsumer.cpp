@@ -89,7 +89,8 @@ static bool s_lvgl_inited = false;
 // ── AutoTextConfig ───────────────────────────────────────────────────
 
 const lv_font_t* ILvglDisplayConsumer::AutoTextConfig::resolveFont(const char* text, lv_display_t* disp) const {
-    const int32_t maxW = lv_display_get_horizontal_resolution(disp);
+    const int32_t effectiveW = boundW > 0 ? boundW : lv_display_get_horizontal_resolution(disp);
+    const int32_t effectiveH = boundH > 0 ? boundH : lv_display_get_vertical_resolution(disp);
     const lv_font_t* fallback = k_autoFonts[k_autoFontCount - 1].font;
 
     for (size_t i = 0; i < k_autoFontCount; i++) {
@@ -98,10 +99,12 @@ const lv_font_t* ILvglDisplayConsumer::AutoTextConfig::resolveFont(const char* t
         if (minSize > 0 && sz < minSize) break;
 
         lv_point_t pt;
-        lv_text_get_size(&pt, text, k_autoFonts[i].font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-        if (pt.x <= maxW) {
-            ESP_LOGD(TAG, "AutoTextConfig: resolved font size %u for text \"%s\" (width %d <= max %d)", sz, text, pt.x, maxW);
-            return k_autoFonts[i].font;
+        if (wrap) {
+            lv_text_get_size(&pt, text, k_autoFonts[i].font, 0, 0, effectiveW, LV_TEXT_FLAG_NONE);
+            if (pt.y <= effectiveH) return k_autoFonts[i].font;
+        } else {
+            lv_text_get_size(&pt, text, k_autoFonts[i].font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+            if (pt.x <= effectiveW) return k_autoFonts[i].font;
         }
         fallback = k_autoFonts[i].font;
     }
@@ -178,6 +181,32 @@ void ILvglDisplayConsumer::buildUi() {
         lv_obj_remove_flag(_zoneObjs[i], LV_OBJ_FLAG_SCROLLABLE);
     }
 
+    auto configureLabel = [&](lv_obj_t* obj, const TextConfig& cfg) {
+        if (cfg.boundW > 0 || cfg.wrap) {
+            const int32_t w = cfg.boundW > 0
+                ? cfg.boundW
+                : lv_display_get_horizontal_resolution(_disp);
+            lv_obj_set_width(obj, w);
+            lv_label_set_long_mode(obj, cfg.wrap ? LV_LABEL_LONG_WRAP : LV_LABEL_LONG_CLIP);
+
+            lv_text_align_t ta;
+            switch (cfg.align) {
+                case LV_ALIGN_TOP_RIGHT:
+                case LV_ALIGN_RIGHT_MID:
+                case LV_ALIGN_BOTTOM_RIGHT:
+                    ta = LV_TEXT_ALIGN_RIGHT; break;
+                case LV_ALIGN_TOP_LEFT:
+                case LV_ALIGN_LEFT_MID:
+                case LV_ALIGN_BOTTOM_LEFT:
+                case LV_ALIGN_DEFAULT:
+                    ta = LV_TEXT_ALIGN_LEFT; break;
+                default:
+                    ta = LV_TEXT_ALIGN_CENTER; break;
+            }
+            lv_obj_set_style_text_align(obj, ta, 0);
+        }
+    };
+
     for (uint8_t i = 0; i < _textCount; i++) {
         const TextConfig& cfg = *_textConfigs[i];
         if (cfg.strokeWidth == 0) continue;
@@ -190,6 +219,7 @@ void ILvglDisplayConsumer::buildUi() {
             lv_obj_set_style_text_font(sl, font, 0);
             lv_obj_set_style_text_color(sl, lv_color_black(), 0);
             lv_label_set_text(sl, "");
+            configureLabel(sl, cfg);
             lv_obj_align(sl, cfg.align, cfg.x_ofs + dx[j], cfg.y_ofs + dy[j]);
             _strokeLabels[i * 4 + j] = sl;
         }
@@ -201,6 +231,7 @@ void ILvglDisplayConsumer::buildUi() {
         lv_obj_set_style_text_font(_labels[i], cfg.resolveFont("", _disp), 0);
         lv_obj_set_style_text_color(_labels[i], lv_color_white(), 0);
         lv_label_set_text(_labels[i], "");
+        configureLabel(_labels[i], cfg);
         lv_obj_align(_labels[i], cfg.align, cfg.x_ofs, cfg.y_ofs);
     }
 

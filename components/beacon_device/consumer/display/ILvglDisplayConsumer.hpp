@@ -46,8 +46,8 @@ public:
                        int32_t x_ofs_       = 0,
                        int32_t y_ofs_       = 0,
                        uint8_t strokeWidth_ = 0,
-                       uint8_t maxSize_     = 0,
-                       uint8_t minSize_     = 0)
+                       uint8_t minSize_     = 0,
+                       uint8_t maxSize_     = 0)
             : maxSize(maxSize_), minSize(minSize_)
         {
             brightness  = brightness_;

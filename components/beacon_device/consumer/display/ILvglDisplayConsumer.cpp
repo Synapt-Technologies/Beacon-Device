@@ -88,25 +88,50 @@ static bool s_lvgl_inited = false;
 
 // ── AutoTextConfig ───────────────────────────────────────────────────
 
+// Probes 'A' to get the actual rendered cap height for a font.
+// 'A' has no descender and reaches the full cap height — a reliable
+// worst-case for uppercase/digit text regardless of what's displayed.
+// Falls back to the em-square (font->line_height) if 'A' is missing.
+static int32_t probeGlyphHeight(const lv_font_t* font) {
+    lv_font_glyph_dsc_t dsc;
+    if (!lv_font_get_glyph_dsc(font, &dsc, 'A', 0)) return font->line_height;
+    const int32_t top    = dsc.ofs_y + (int32_t)dsc.box_h;
+    const int32_t bottom = -dsc.ofs_y;
+    return (top + bottom > 0) ? (top + bottom) : font->line_height;
+}
+
 const lv_font_t* ILvglDisplayConsumer::AutoTextConfig::resolveFont(const char* text, lv_display_t* disp) const {
     const int32_t effectiveW = boundW > 0 ? boundW : lv_display_get_horizontal_resolution(disp);
     const int32_t effectiveH = boundH > 0 ? boundH : lv_display_get_vertical_resolution(disp);
+    const int32_t sw         = strokeWidth;
+    const int32_t fitW       = effectiveW - 2 * sw;
+    const int32_t fitH       = effectiveH - 2 * sw;
     const lv_font_t* fallback = k_autoFonts[k_autoFontCount - 1].font;
 
     for (size_t i = 0; i < k_autoFontCount; i++) {
-        const uint8_t sz = k_autoFonts[i].size;
+        const uint8_t sz    = k_autoFonts[i].size;
+        const lv_font_t* f  = k_autoFonts[i].font;
         if (maxSize > 0 && sz > maxSize) continue;
         if (minSize > 0 && sz < minSize) break;
 
+        const int32_t glyphH = probeGlyphHeight(f);
         lv_point_t pt;
         if (wrap) {
-            lv_text_get_size(&pt, text, k_autoFonts[i].font, 0, 0, effectiveW, LV_TEXT_FLAG_NONE);
-            if (pt.y <= effectiveH) return k_autoFonts[i].font;
+            lv_text_get_size(&pt, text, f, 0, 0, fitW, LV_TEXT_FLAG_NONE);
+            const int32_t numLines = pt.y / f->line_height;
+            const int32_t visualH  = numLines * glyphH;
+            if (visualH <= fitH) {
+                ESP_LOGI(TAG, "AutoTextConfig: resolved font %u for \"%s\" (visual h %d <= fit h %d)", sz, text, visualH, fitH);
+                return f;
+            }
         } else {
-            lv_text_get_size(&pt, text, k_autoFonts[i].font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-            if (pt.x <= effectiveW) return k_autoFonts[i].font;
+            lv_text_get_size(&pt, text, f, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+            if (pt.x <= fitW && glyphH <= fitH) {
+                ESP_LOGI(TAG, "AutoTextConfig: resolved font %u for \"%s\" (w %d <= fit w %d, h %d <= fit h %d)", sz, text, pt.x, fitW, glyphH, fitH);
+                return f;
+            }
         }
-        fallback = k_autoFonts[i].font;
+        fallback = f;
     }
     return fallback;
 }

@@ -53,28 +53,28 @@ static const AutoFontEntry k_autoFonts[] = {
     {  44, &lv_font_montserrat_44 },
 #endif
 #if LV_FONT_MONTSERRAT_40
-    {  40, &lv_font_montserrat_40 },
+    {  40, &lv_font_montserrat_40 }, 
 #endif
-#if LV_FONT_MONTSERRAT_34
-    {  34, &lv_font_montserrat_34 },
+#if LV_FONT_MONTSERRAT_36
+    {  36, &lv_font_montserrat_36 },
 #endif
-#if LV_FONT_MONTSERRAT_30
-    {  30, &lv_font_montserrat_30 },
+#if LV_FONT_MONTSERRAT_32
+    {  32, &lv_font_montserrat_32 },
 #endif
 #if LV_FONT_MONTSERRAT_28
     {  28, &lv_font_montserrat_28 },
 #endif
-#if LV_FONT_MONTSERRAT_22
-    {  22, &lv_font_montserrat_22 },
+#if LV_FONT_MONTSERRAT_24
+    {  24, &lv_font_montserrat_24 },
+#endif
+#if LV_FONT_MONTSERRAT_20
+    {  20, &lv_font_montserrat_20 },
 #endif
 #if LV_FONT_MONTSERRAT_16
     {  16, &lv_font_montserrat_16 },
 #endif
-#if LV_FONT_MONTSERRAT_14
-    {  14, &lv_font_montserrat_14 },
-#endif
-#if LV_FONT_MONTSERRAT_10
-    {  10, &lv_font_montserrat_10 },
+#if LV_FONT_MONTSERRAT_12
+    {  12, &lv_font_montserrat_12 },
 #endif
 };
 constexpr size_t k_autoFontCount = sizeof(k_autoFonts) / sizeof(k_autoFonts[0]);

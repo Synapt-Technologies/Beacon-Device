@@ -1,7 +1,7 @@
 #pragma once
 
 #include "types/AlertTypes.hpp"
-#include "orchestrator/handlers/alert/colorPatternMap/IColorAlertPatternMap.hpp"
+#include "orchestrator/handlers/colorPatternMap/IColorAlertPatternMap.hpp"
 #include "esp_log.h"
 #include "consumer/IConsumer.hpp"
 

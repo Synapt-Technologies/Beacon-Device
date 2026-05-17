@@ -80,10 +80,9 @@ protected:
 
         TallyState step_variants[8]; // TODO check if this is the right limit. using pattern->varientCount here is not allowed in standard c++
         for (uint8_t v = 0; v < pattern->variantCount; v++) {
-            TallyState s = pattern->patterns[v][step % pattern->patternLen];
-            step_variants[v] = (s == TallyState::NONE) ? _state : s;
+            step_variants[v] s = pattern->patterns[v][step % pattern->patternLen];
         }
-
+        
         for (uint8_t i = 0; i < _consumerCount; i++)
             _consumers[i]->setAlertStep(target, step_variants, pattern->variantCount);
     }

@@ -25,3 +25,9 @@ enum class DeviceAlertTarget {
     TALENT = 2,
 };
 
+enum class DeviceAlertType {
+    COLOR = 0,
+    TEXT  = 1,
+    BOTH  = 2,
+};
+

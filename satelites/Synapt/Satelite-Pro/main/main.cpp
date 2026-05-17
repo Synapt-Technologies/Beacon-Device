@@ -11,6 +11,7 @@
 #include "beaconConnection/TcpMqttBeaconConnection.hpp"
 #include "httpServer/EspHttpServer.hpp"
 #include "consumer/display/Hub75LvglDisplayConsumer.hpp"
+#include "consumer/ConsumerGroup.hpp"
 
 #include "orchestrator/SateliteOrchestrator.hpp"
 
@@ -306,8 +307,13 @@ extern "C" void app_main()
     static const ILvglDisplayConsumer::FixedTextConfig hub75Text0 { &lv_font_montserrat_28, 255, LV_ALIGN_CENTER, 0, 0 };
     static const ILvglDisplayConsumer::TextConfig* const hub75Text[] = { &hub75Text0 };
 
-    IConsumer* consumer1 = new Hub75LvglDisplayConsumer(config, hub75Zones, 1, hub75Text, 1);
-    IConsumer* consumers[] = { consumer1 };
+    Hub75LvglDisplayConsumer* consumer1 = new Hub75LvglDisplayConsumer(config, hub75Zones, 1, hub75Text, 1);
+
+    static ConsumerGroup group;
+    group.addConsumer(consumer1);
+
+    // TODO: AddGroup on orchestrator?
+    ConsumerGroup* groups[] = { &group };
 
     DeviceProfile profile = DeviceProfile{
         .deviceType = DeviceType::SINGLE_TOPIC,
@@ -315,7 +321,7 @@ extern "C" void app_main()
         .consumerCount = 1,
     };
 
-    SateliteOrchestrator orchestrator = SateliteOrchestrator(*settingsStore, profile, *network, *beacon, consumers, profile.consumerCount, httpServer);
+    SateliteOrchestrator orchestrator = SateliteOrchestrator(*settingsStore, profile, *network, *beacon, groups, 1, httpServer);
     orchestrator.start();
 
     // Keep app_main alive so stack-allocated runtime objects (orchestrator/http server)

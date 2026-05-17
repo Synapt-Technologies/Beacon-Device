@@ -1,6 +1,5 @@
 #include "orchestrator/SateliteOrchestrator.hpp"
 #include "networkConnection/IWifiConnection.hpp"
-#include "consumer/IDisplayConsumer.hpp"
 
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -12,11 +11,8 @@
 
 void SateliteOrchestrator::doStart()
 {
-    for (int i = 0; i < _consumerCount; i++)
-        _consumers[i]->init();
-
-    // TODO Add checks. e.g. deviceType can only be Single in this orchestrator.
-
+    for (int i = 0; i < _groupCount; i++)
+        _groups[i]->init();
 
     _config.onNetworkChanged([this](const Settings::Network& s){ onNetworkChanged(s); });
     _config.onBeaconChanged ([this](const Settings::Beacon&  s){ onBeaconChanged(s);  });
@@ -27,7 +23,10 @@ void SateliteOrchestrator::doStart()
         [this](TallyState state) { applyTally(state); }
     );
     _beacon.setAlertCallback(
-        [this](DeviceAlertAction a, DeviceAlertTarget t, uint32_t ms) { applyAlert(a, t, ms); }
+        [this](DeviceAlertType type, DeviceAlertAction action,
+               DeviceAlertTarget target, uint32_t ms, const char* text) {
+            applyAlert(type, action, target, ms, text);
+        }
     );
     _beacon.setNameCallback(
         [this](const char* s, const char* l) {
@@ -44,18 +43,14 @@ void SateliteOrchestrator::doStart()
         [this](BeaconStatus s) { onBeaconStatus(s); }
     );
 
-    _network.setConnectionCallback( // TODO Check if needed. For the ui? Should it be stored in the INetworkConnection implementation?
+    _network.setConnectionCallback(
         [this](NetworkStatus s, esp_ip4_addr_t ip) { onNetworkStatus(s, ip); }
-    ); 
+    );
 
-    // TODO Init inside of ochestrator? Probably yes because the callbacks.
-    // TODO Check order.
     _network.start();
-
     _config.load();
-
     _http.start();
-    registerHttpHandlers(); // TODO Build context.
+    registerHttpHandlers();
 
     ESP_LOGI(TAG, "Started");
     ESP_LOGI("main", "Stack HWM: %lu bytes free", uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t));
@@ -76,19 +71,12 @@ void SateliteOrchestrator::onNetworkChanged(const Settings::Network& s)
     ESP_LOGI(TAG, "Network settings changed, reconfiguring WiFi");
     if (auto* wifi = _network.asWifi())
         wifi->configure(s.ssid, s.password);
-    // _beacon.stop(); // TODO Check if needed.
 }
 
 void SateliteOrchestrator::onBeaconChanged(const Settings::Beacon& s)
 {
     ESP_LOGI(TAG, "Beacon settings changed, reconnecting");
-
-    // if (s.mqttUrl[0] != '\0') { // TODO more safeties.
-        _beacon.setBaseAddress(s.mqttUrl);
-    // } else {
-        // _beacon.stop();
-        // return;
-    // }
+    _beacon.setBaseAddress(s.mqttUrl);
 
     char consumerId[48];
     if (s.consumerId[0][0] != '\0') {
@@ -107,94 +95,81 @@ void SateliteOrchestrator::onBeaconChanged(const Settings::Beacon& s)
                  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     }
     _beacon.setAddress(consumerId, deviceId);
-
-    // if (_wifi.isConnected()) { // TODO Check if beaconConnection handles disconnects well.
-    //     char url[128];
-    //     strncpy(url, s.mqttUrl, sizeof(url) - 1);
-    //     _beacon.start();
-    // }
 }
 
 void SateliteOrchestrator::onDisplayChanged(const Settings::Display& s)
 {
-    for (int i = 0; i < _consumerCount; i++) {
-        _consumers[i]->setBrightness(s.brightness[i]);
-        // TODO Add alert target handeling. Not implemented because of multi target consumers.
-    }
+    for (int i = 0; i < _groupCount; i++)
+        _groups[i]->setMasterBrightness(s.brightness[i]);
 }
 
 void SateliteOrchestrator::onRuntimeChanged(const Settings::Runtime& s)
 {
+    ESP_LOGI(TAG, "Runtime settings changed: Shortname: %s, Longname: %s",
+             s.name[0].shortName, s.name[0].longName);
 
-    ESP_LOGI(TAG, "Runtime settings changed: Shortname: %s, Longname: %s", s.name[0].shortName, s.name[0].longName);
 
-    // for (int i = 0; i < _consumerCount; i++) { // TODO add master brightness
-    //     _consumers[i]->setBrightness(s.brightness);
-    //     // TODO Add alert target handeling. Not implemented because of multi target consumers.
-    // }
-
-    for (int i = 0; i < _consumerCount; i++) {
-        if (auto* d = _consumers[i]->asDisplay()) {
-            d->setText(s.name[0].shortName, 0, 0);
-            d->setText(s.name[0].longName,  1, 0);
-        }
+    // TODO: More runtime. E.g. state_on_disconnect, flip_sides, etc.
+    for (int i = 0; i < _groupCount; i++) {
+        _groups[i]->setText(0, s.name[0].shortName);
+        _groups[i]->setText(1, s.name[0].longName);
     }
 }
 
 // ? Runtime Callbacks
+
 void SateliteOrchestrator::applyTally(TallyState state)
 {
     ESP_LOGI(TAG, "Applying tally state: %d", static_cast<int>(state));
-
-    for (int i = 0; i < _consumerCount; i++) {
-        _consumers[i]->setState(state);
-    }
+    for (int i = 0; i < _groupCount; i++)
+        _groups[i]->setState(state);
 }
 
-void SateliteOrchestrator::applyAlert(DeviceAlertAction action,
-                                       DeviceAlertTarget target,
-                                       uint32_t timeout)
+void SateliteOrchestrator::applyAlert(DeviceAlertType type, DeviceAlertAction action,
+                                      DeviceAlertTarget target, uint32_t timeout,
+                                      const char* text)
 {
-    ESP_LOGI(TAG, "Applying alert: %d", static_cast<int>(action));
-    for (int i = 0; i < _consumerCount; i++) {
-        _consumers[i]->setAlert(action, target, timeout);
+    ESP_LOGI(TAG, "Applying alert: type=%d action=%d", static_cast<int>(type), static_cast<int>(action));
+    for (int i = 0; i < _groupCount; i++) {
+        if (type == DeviceAlertType::COLOR || type == DeviceAlertType::BOTH) {
+            if (action == DeviceAlertAction::CLEAR)
+                _groups[i]->clearColorAlert();
+            else
+                _groups[i]->setColorAlert(action, target, timeout);
+        }
+        if (type == DeviceAlertType::TEXT || type == DeviceAlertType::BOTH) {
+            if (action == DeviceAlertAction::CLEAR)
+                _groups[i]->clearTextAlert(target);
+            else
+                _groups[i]->setTextAlert(text ? text : "", target, timeout);
+        }
     }
 }
-
-
 
 // ? Network Callbacks
-
 
 void SateliteOrchestrator::onBeaconStatus(BeaconStatus status)
 {
     ESP_LOGI(TAG, "Beacon status changed: %d", static_cast<int>(status));
     _beaconStatus = status;
 
-    if (status != BeaconStatus::CONNECTED) {
+    if (status != BeaconStatus::CONNECTED)
         applyTally(_config.get().runtime.state_on_disconnect);
-    }
 }
-
 
 void SateliteOrchestrator::onNetworkStatus(NetworkStatus status, esp_ip4_addr_t ip)
 {
-
     ESP_LOGI(TAG, "Network status changed: %d", static_cast<int>(status));
-
     _networkStatus = status;
-    this->_networkIp = ip;
+    _networkIp = ip;
 
-    if (status == NetworkStatus::CONNECTED) {
+    if (status == NetworkStatus::CONNECTED)
         _beacon.start();
-    } else {
+    else
         _beacon.stop();
-    }
 }
 
-
 // ? HTTP
-// TODO Handled here?
 
 void SateliteOrchestrator::registerHttpHandlers()
 {

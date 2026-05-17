@@ -14,6 +14,7 @@
 #include "consumer/SimpleRGBConsumer.hpp"
 #include "consumer/WS2812Consumer.hpp"
 #include "consumer/display/Ili9341LvglDisplayConsumer.hpp"
+#include "consumer/ConsumerGroup.hpp"
 #include "httpServer/EspHttpServer.hpp"
 
 #include "orchestrator/SateliteOrchestrator.hpp"
@@ -61,7 +62,7 @@ extern "C" void app_main()
     DeviceProfile profile = DeviceProfile{
         .deviceType = DeviceType::SINGLE_TOPIC,
         .model = "CYD Satellite",
-        .consumerCount = 3,
+        .consumerCount = 1,
     };
     INetworkConnection* network = new StaWifiConnection("CYD_Satellite");
 
@@ -72,8 +73,8 @@ extern "C" void app_main()
         { 24, 0, DeviceAlertTarget::OPERATOR },
         { 40, 2, DeviceAlertTarget::OPERATOR },
     };
-    IConsumer* consumer1 = new WS2812Consumer(createLedStrip(), ADD_LED_STRIP_LED_NUMBER, ws2812Sections, 3);
-    IConsumer* consumer2 = new SimpleRGBConsumer(FIX_LED_R_GPIO, FIX_LED_G_GPIO, FIX_LED_B_GPIO, DeviceAlertTarget::OPERATOR);
+    WS2812Consumer* consumer1 = new WS2812Consumer(createLedStrip(), ADD_LED_STRIP_LED_NUMBER, ws2812Sections, 3);
+    SimpleRGBConsumer* consumer2 = new SimpleRGBConsumer(FIX_LED_R_GPIO, FIX_LED_G_GPIO, FIX_LED_B_GPIO, DeviceAlertTarget::OPERATOR);
 
     LV_FONT_DECLARE(helvatica_140);
     static const IDisplayConsumer::Zone cydZones[] = {
@@ -88,13 +89,19 @@ extern "C" void app_main()
     static const ILvglDisplayConsumer::FixedTextConfig cydText0 { &helvatica_140,         255, LV_ALIGN_CENTER, 0,  0 };
     static const ILvglDisplayConsumer::FixedTextConfig cydText1 { &lv_font_montserrat_28,  80, LV_ALIGN_CENTER, 0, 70 };
     static const ILvglDisplayConsumer::TextConfig* const cydText[] = { &cydText0, &cydText1 };
-    IConsumer* consumer3 = new Ili9341LvglDisplayConsumer(cydZones, 7, cydText, 2);
+    Ili9341LvglDisplayConsumer* consumer3 = new Ili9341LvglDisplayConsumer(cydZones, 7, cydText, 2);
 
-    IConsumer* consumers[] = { consumer1, consumer2, consumer3 };
+    static ConsumerGroup group;
+    group.addConsumer(consumer1);
+    group.addConsumer(consumer2);
+    group.addConsumer(consumer3);
+
+    // TODO: AddGroup on orchestrator?
+    ConsumerGroup* groups[] = { &group };
 
     EspHttpServer httpServer = EspHttpServer();
 
-    SateliteOrchestrator orchestrator = SateliteOrchestrator(*settingsStore, profile, *network, *beacon, consumers, profile.consumerCount, httpServer);
+    SateliteOrchestrator orchestrator = SateliteOrchestrator(*settingsStore, profile, *network, *beacon, groups, 1, httpServer);
     orchestrator.start();
 
     // Keep app_main alive so stack-allocated runtime objects (orchestrator/http server)

@@ -253,16 +253,36 @@ private:
         if (!_alertCb)
             return;
 
-        int type   = extractInt(data, len, "type",   -1);
-        int target = extractInt(data, len, "target", -1);
-        int time   = extractInt(data, len, "time",   -1);
+        int type   = extractInt(data, len, "type",    0);  // DeviceAlertType (default: COLOR)
+        int action = extractInt(data, len, "action",  6);  // DeviceAlertAction
+        int target = extractInt(data, len, "target",  0);  // DeviceAlertTarget
+        int time   = extractInt(data, len, "time",    1000);  // timeout ms
 
-        ESP_LOGI(TAG, "Alert type=%d target=%d time=%d", type, target, time);
+        // Extract optional text field.
+        char alertText[64] = {};
+        static constexpr char textKey[] = "\"text\":\"";
+        static constexpr int  textKeyLen = sizeof(textKey) - 1;
+        for (int i = 0; i <= len - textKeyLen; i++) {
+            if (strncmp(data + i, textKey, textKeyLen) == 0) {
+                const char* p = data + i + textKeyLen;
+                int j = 0;
+                while (p + j < data + len && p[j] != '"' && j < (int)sizeof(alertText) - 1)
+                    alertText[j] = p[j], j++;
+                break;
+            }
+        }
 
+        ESP_LOGI(TAG, "Alert action=%d target=%d time=%d type=%d text=\"%s\"",
+                 action, target, time, type, alertText);
+
+        // TODO: Double validation here, extractInt already does this.
+        // TODO: Move defaults to IBeaconConnection.
         _alertCb(
-            static_cast<DeviceAlertAction>(type),
-            static_cast<DeviceAlertTarget>(target),
-            time >= 0 ? static_cast<uint32_t>(time) : 0
+            static_cast<DeviceAlertType>(type),
+            static_cast<DeviceAlertAction>(action),
+            static_cast<DeviceAlertTarget>(target >= 0 ? target : 0),
+            time >= 0 ? static_cast<uint32_t>(time) : 0,
+            alertText
         );
     }
 

@@ -17,7 +17,8 @@ enum class BeaconStatus {
 class IBeaconConnection {
 public:
     using TallyCb = std::function<void(TallyState state)>;
-    using AlertCb = std::function<void(DeviceAlertAction action, DeviceAlertTarget target, uint32_t timeout)>;
+    using AlertCb = std::function<void(DeviceAlertType type, DeviceAlertAction action,
+                                       DeviceAlertTarget target, uint32_t timeout, const char* text)>;
     using NameCb  = std::function<void(const char* shortName, const char* longName)>; // TODO: More generic runtime callback?
     using ConnectionCb = std::function<void(BeaconStatus status)>;
 

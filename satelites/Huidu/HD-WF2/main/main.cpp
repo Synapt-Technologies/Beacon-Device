@@ -13,7 +13,7 @@
 #include "beaconConnection/TcpMqttBeaconConnection.hpp"
 #include "consumer/display/Hub75LvglDisplayConsumer.hpp"
 #include "consumer/WS2812Consumer.hpp"
-#include "consumer/IDisplayConsumer.hpp"
+#include "consumer/ConsumerGroup.hpp"
 #include "httpServer/EspHttpServer.hpp"
 
 #include "orchestrator/SateliteOrchestrator.hpp"
@@ -142,7 +142,7 @@ extern "C" void app_main() {
   // static const ILvglDisplayConsumer::FixedTextConfig text0 { &lv_font_montserrat_32, 255, LV_ALIGN_CENTER, 0, 0, 1 };
   static const ILvglDisplayConsumer::AutoTextConfig text0 { 255, LV_ALIGN_CENTER, 0, -1, 1, 12, 0, 62, 30, false };
   static const ILvglDisplayConsumer::TextConfig* const textConf[] = { &text0 };
-  IConsumer* consumer1 = new Hub75LvglDisplayConsumer(config, hub75Zones, 9, textConf, 1);
+  Hub75LvglDisplayConsumer* consumer1 = new Hub75LvglDisplayConsumer(config, hub75Zones, 9, textConf, 1);
 
   static StripSection ws2812Sections[] = {
     { 0, 0, DeviceAlertTarget::OPERATOR },
@@ -152,21 +152,24 @@ extern "C" void app_main() {
     { 4, 1, DeviceAlertTarget::OPERATOR },
     { 5, 0, DeviceAlertTarget::OPERATOR },
   };
-  IConsumer* consumer2 = new WS2812Consumer(createLedStrip(), ADD_LED_STRIP_LED_NUMBER, ws2812Sections, 6);
+  WS2812Consumer* consumer2 = new WS2812Consumer(createLedStrip(), ADD_LED_STRIP_LED_NUMBER, ws2812Sections, 6);
 
+  static ConsumerGroup group;
+  group.addConsumer(consumer1);
+  group.addConsumer(consumer2);
 
-
-  IConsumer* consumers[] = { consumer1, consumer2 };
+  // TODO: AddGroup on orchestrator?
+  ConsumerGroup* groups[] = { &group };
 
   EspHttpServer httpServer = EspHttpServer();
 
   DeviceProfile profile = DeviceProfile{
     .deviceType = DeviceType::SINGLE_TOPIC,
     .model = "HD-WF2 Satellite",
-    .consumerCount = 2,
+    .consumerCount = 1,
   };
 
-  SateliteOrchestrator orchestrator = SateliteOrchestrator(*settingsStore, profile, *network, *beacon, consumers, profile.consumerCount, httpServer);
+  SateliteOrchestrator orchestrator = SateliteOrchestrator(*settingsStore, profile, *network, *beacon, groups, 1, httpServer);
   orchestrator.start();
 
   // Keep app_main alive so stack-allocated runtime objects (orchestrator/http server)

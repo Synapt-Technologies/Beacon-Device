@@ -8,10 +8,10 @@ public:
                          const DeviceProfile& profile,
                          INetworkConnection&  network,
                          IBeaconConnection&   beacon,
-                         IConsumer**          consumers,
-                         uint8_t              consumerCount,
+                         ConsumerGroup**      groups,
+                         uint8_t              groupCount,
                          EspHttpServer&       http)
-        : IOrchestrator(store, profile, network, beacon, consumers, consumerCount, http)
+        : IOrchestrator(store, profile, network, beacon, groups, groupCount, http)
     {}
 
     void stop() override;
@@ -22,7 +22,7 @@ protected:
 private:
     static constexpr char TAG[] = "SateliteOrch";
 
-    BeaconStatus _beaconStatus = BeaconStatus::DISCONNECTED; // TODO Add UI and check if it needs to be stored here at all.
+    BeaconStatus _beaconStatus = BeaconStatus::DISCONNECTED;
 
     void onNetworkChanged(const Settings::Network& s);
     void onBeaconChanged (const Settings::Beacon&  s);
@@ -33,7 +33,8 @@ private:
     void onBeaconStatus(BeaconStatus status);
 
     void applyTally(TallyState state);
-    void applyAlert(DeviceAlertAction action, DeviceAlertTarget target, uint32_t timeout);
+    void applyAlert(DeviceAlertType type, DeviceAlertAction action,
+                    DeviceAlertTarget target, uint32_t timeout, const char* text);
     void applyDisplay(const Settings::Display& s);
 
     void registerHttpHandlers();

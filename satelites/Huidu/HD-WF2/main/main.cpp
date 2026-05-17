@@ -16,6 +16,10 @@
 #include "consumer/IDisplayConsumer.hpp"
 #include "httpServer/EspHttpServer.hpp"
 
+#include "mapper/FixedTallyColorMapper.hpp"
+
+#include "orchestrator/handlers/TallyHandler.hpp"
+#include "orchestrator/handlers/colorPatternMap/DefaultColorAlertPatternMap.hpp"
 #include "orchestrator/SateliteOrchestrator.hpp"
 
 
@@ -116,7 +120,26 @@ extern "C" void app_main() {
   IBeaconConnection* beacon = new TcpMqttBeaconConnection();
 
 
+  EspHttpServer httpServer = EspHttpServer();
+
+  DeviceProfile profile = DeviceProfile{
+    .deviceType = DeviceType::SINGLE_TOPIC,
+    .model = "HD-WF2 Satellite",
+    .consumerCount = 2,
+  };
+
+
+  IColorAlertPatternMap* colorAlertPatternMap = new DefaultColorAlertPatternMap();
+
+  TallyHandler* tallyHandler = new TallyHandler(*colorAlertPatternMap);
+
+  SateliteOrchestrator orchestrator = SateliteOrchestrator(*settingsStore, profile, *network, *beacon, *tallyHandler, httpServer);
+  
   //? Consumers
+
+
+  ITallyColorMapper* colorMapper = new FixedTallyColorMapper();
+
   static const IDisplayConsumer::Zone hub75Zones[] = {
     {    0,  0,  10,  3,  1, DeviceAlertTarget::TALENT,    TallyState::NONE,    true },  // Top Left
     {    10, 0,  44,  3,  0, DeviceAlertTarget::TALENT,    TallyState::NONE,    true },  // Top Bar
@@ -142,7 +165,9 @@ extern "C" void app_main() {
   // static const ILvglDisplayConsumer::FixedTextConfig text0 { &lv_font_montserrat_32, 255, LV_ALIGN_CENTER, 0, 0, 1 };
   static const ILvglDisplayConsumer::AutoTextConfig text0 { 255, LV_ALIGN_CENTER, 0, -1, 1, 12, 0, 62, 30, false };
   static const ILvglDisplayConsumer::TextConfig* const textConf[] = { &text0 };
-  IConsumer* consumer1 = new Hub75LvglDisplayConsumer(config, hub75Zones, 9, textConf, 1);
+  IConsumer* consumer1 = new Hub75LvglDisplayConsumer(*colorMapper, config, hub75Zones, 9, textConf, 1);
+
+  orchestrator.addConsumer(consumer1);
 
   static StripSection ws2812Sections[] = {
     { 0, 0, DeviceAlertTarget::OPERATOR },
@@ -152,21 +177,11 @@ extern "C" void app_main() {
     { 4, 1, DeviceAlertTarget::OPERATOR },
     { 5, 0, DeviceAlertTarget::OPERATOR },
   };
-  IConsumer* consumer2 = new WS2812Consumer(createLedStrip(), ADD_LED_STRIP_LED_NUMBER, ws2812Sections, 6);
+  IConsumer* consumer2 = new WS2812Consumer(*colorMapper, createLedStrip(), ADD_LED_STRIP_LED_NUMBER, ws2812Sections, 6);
 
-
-
-  IConsumer* consumers[] = { consumer1, consumer2 };
-
-  EspHttpServer httpServer = EspHttpServer();
-
-  DeviceProfile profile = DeviceProfile{
-    .deviceType = DeviceType::SINGLE_TOPIC,
-    .model = "HD-WF2 Satellite",
-    .consumerCount = 2,
-  };
-
-  SateliteOrchestrator orchestrator = SateliteOrchestrator(*settingsStore, profile, *network, *beacon, consumers, profile.consumerCount, httpServer);
+  orchestrator.addConsumer(consumer2);  
+  
+  
   orchestrator.start();
 
   // Keep app_main alive so stack-allocated runtime objects (orchestrator/http server)

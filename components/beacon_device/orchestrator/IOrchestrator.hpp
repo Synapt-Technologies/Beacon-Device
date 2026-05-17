@@ -8,8 +8,10 @@
 #include "consumer/IConsumer.hpp"
 #include "httpServer/EspHttpServer.hpp"
 #include "httpServer/HttpHandlers.hpp"
+#include "orchestrator/handlers/TallyHandler.hpp"
 #include <cstring>
 
+// TODO: Rewrite! Lot of satelite code that should not be here!
 class IOrchestrator {
 public:
     static constexpr uint8_t MAX_CONSUMERS = 8;
@@ -18,36 +20,46 @@ public:
                     const DeviceProfile& profile,
                     INetworkConnection&  network,
                     IBeaconConnection&   beacon,
-                    IConsumer**          consumers,
-                    uint8_t              consumerCount,
+                    TallyHandler&        tallyHandler,
                     EspHttpServer&       http
                 ) :
           _config(store)
         , _profile(profile)
         , _network(network)
         , _beacon(beacon)
-        , _consumerCount(consumerCount < MAX_CONSUMERS ? consumerCount : MAX_CONSUMERS)
+        , _tallyHandler(tallyHandler)
         , _http(http)
         , _httpCtx{_config, _profile, _network, _beacon}
     {
-        memset(_consumers, 0, sizeof(_consumers));
-        memcpy(_consumers, consumers, _consumerCount * sizeof(IConsumer*));
     }
 
     virtual ~IOrchestrator() = default;
+
+    void addConsumer(IConsumer* consumer) {
+        if (_consumerCount >= MAX_CONSUMERS) {
+            ESP_LOGW("Orchestrator", "Max consumers reached, cannot add more");
+            return;    
+        }
+        _consumers[_consumerCount++] = consumer;
+        _tallyHandler.addConsumer(consumer);
+    }
 
     void start();
     virtual void stop() = 0;
 
 protected:
+    static constexpr char TAG[] = "SateliteOrch";
+
     static constexpr uint32_t STARTUP_STACK_SIZE = 8192;
     virtual void doStart() = 0;
+    
     Config               _config;
     const DeviceProfile& _profile;
     INetworkConnection&  _network;
     IBeaconConnection&   _beacon;
     IConsumer*           _consumers[MAX_CONSUMERS];
     uint8_t              _consumerCount;
+    TallyHandler&        _tallyHandler;
     EspHttpServer&       _http;
 
     // TODO Move to UI class.

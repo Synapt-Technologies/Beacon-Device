@@ -57,8 +57,8 @@ protected:
     const DeviceProfile& _profile;
     INetworkConnection&  _network;
     IBeaconConnection&   _beacon;
-    IConsumer*           _consumers[MAX_CONSUMERS];
-    uint8_t              _consumerCount;
+    IConsumer*           _consumers[MAX_CONSUMERS] = {};
+    uint8_t              _consumerCount            = 0;
     TallyHandler&        _tallyHandler;
     EspHttpServer&       _http;
 

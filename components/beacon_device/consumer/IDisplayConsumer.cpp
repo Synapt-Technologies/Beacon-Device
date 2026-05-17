@@ -9,7 +9,7 @@ IDisplayConsumer::~IDisplayConsumer() {
     }
 }
 
-void IDisplayConsumer::setText(const char* text, uint8_t index, uint32_t timeout) {
+void IDisplayConsumer::ApplyText(const char* text, uint8_t index, uint32_t timeout) {
     if (index >= TEXT_COUNT) return;
     TextSlot& s = _texts[index];
 
@@ -29,11 +29,20 @@ void IDisplayConsumer::setText(const char* text, uint8_t index, uint32_t timeout
         if (s.revert) {
             xTimerStart(s.revert, 0);
         } else {
-            // Timer allocation failed — revert immediately.
             onTextChanged(index, s.base);
             delete ctx;
         }
     }
+}
+
+void IDisplayConsumer::clearAlertText(uint8_t index) {
+    if (index >= TEXT_COUNT) return;
+    TextSlot& s = _texts[index];
+    if (s.revert) {
+        xTimerDelete(s.revert, 0);
+        s.revert = nullptr;
+    }
+    onTextChanged(index, s.base);
 }
 
 void IDisplayConsumer::revertTimerCb(TimerHandle_t h) {

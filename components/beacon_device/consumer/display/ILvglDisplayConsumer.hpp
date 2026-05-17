@@ -1,6 +1,7 @@
 #pragma once
 
 #include "consumer/IDisplayConsumer.hpp"
+#include "consumer/ConsumerGroup.hpp"
 #include "lvgl.h"
 
 class ILvglDisplayConsumer : public IDisplayConsumer {
@@ -70,7 +71,17 @@ public:
 
     void init() override;
 
+    void registerWith(ConsumerGroup& group) override {
+        group.addSection(this);
+        group.addTextRenderer(this);
+    }
+
     uint8_t labelCount() const override { return _textCount; }
+
+    // ISection overrides — driven by ConsumerGroup
+    void applyState(TallyState state) override;
+    void applyAlertStep(DeviceAlertAction action, DeviceAlertTarget target,
+                        uint8_t step, TallyState fallback) override;
 
 protected:
     ILvglDisplayConsumer(const IDisplayConsumer::Zone* zones, uint8_t zoneCount,
@@ -83,10 +94,6 @@ protected:
 
     // Owned by the derived class for cleanup ordering — set to nullptr after removal.
     lv_display_t* _disp = nullptr;
-
-    // IConsumer overrides — shared LVGL rendering
-    void applyState(TallyState state) override;
-    void setAlertStep(DeviceAlertAction action, DeviceAlertTarget target, uint8_t step) override;
 
     // IDisplayConsumer override
     void onTextChanged(uint8_t index, const char* text) override;

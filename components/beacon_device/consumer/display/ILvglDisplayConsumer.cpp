@@ -256,6 +256,10 @@ void ILvglDisplayConsumer::buildUi() {
         lv_obj_set_style_text_font(_labels[i], cfg.resolveFont("", _disp), 0);
         lv_obj_set_style_text_color(_labels[i], lv_color_white(), 0);
         lv_label_set_text(_labels[i], "");
+        if (!cfg.wrap && cfg.boundW == 0) {
+            // Scroll text that would overflow rather than clipping it.
+            lv_label_set_long_mode(_labels[i], LV_LABEL_LONG_SCROLL_CIRCULAR);
+        }
         configureLabel(_labels[i], cfg);
         lv_obj_align(_labels[i], cfg.align, cfg.x_ofs, cfg.y_ofs);
     }
@@ -266,7 +270,7 @@ void ILvglDisplayConsumer::buildUi() {
     lvgl_port_unlock();
 }
 
-// ── IConsumer overrides ──────────────────────────────────────────────
+// ── ISection overrides — driven by ConsumerGroup ─────────────────────
 
 void ILvglDisplayConsumer::applyState(TallyState state) {
     if (!_zoneObjs || !_labels[0] || !lvgl_port_lock(portMAX_DELAY)) return;
@@ -278,13 +282,11 @@ void ILvglDisplayConsumer::applyState(TallyState state) {
 
     for (uint8_t i = 0; i < _zoneCount; i++) {
         const IDisplayConsumer::Zone& z = _displayZones[i];
-        if (state < z.minState) {
+        if (state < z.minState || !z.stateColored) {
             lv_obj_set_style_bg_opa(_zoneObjs[i], LV_OPA_TRANSP, 0);
-        } else if (z.stateColored) {
+        } else {
             lv_obj_set_style_bg_color(_zoneObjs[i], col, 0);
             lv_obj_set_style_bg_opa(_zoneObjs[i], LV_OPA_COVER, 0);
-        } else if (!_alertTask) {
-            lv_obj_set_style_bg_opa(_zoneObjs[i], LV_OPA_TRANSP, 0);
         }
     }
     for (uint8_t i = 0; i < _textCount; i++) {
@@ -308,8 +310,9 @@ void ILvglDisplayConsumer::applyState(TallyState state) {
     lvgl_port_unlock();
 }
 
-void ILvglDisplayConsumer::setAlertStep(DeviceAlertAction action,
-                                        DeviceAlertTarget target, uint8_t step) {
+void ILvglDisplayConsumer::applyAlertStep(DeviceAlertAction action,
+                                          DeviceAlertTarget target,
+                                          uint8_t step, TallyState fallback) {
     const AlertPattern* cfg = getAlertPattern(action);
     if (!cfg || !_zoneObjs || !lvgl_port_lock(portMAX_DELAY)) return;
 
@@ -317,16 +320,16 @@ void ILvglDisplayConsumer::setAlertStep(DeviceAlertAction action,
         const IDisplayConsumer::Zone& z = _displayZones[i];
 
         if (z.alertTarget != DeviceAlertTarget::ALL
-            && target != DeviceAlertTarget::ALL
+            && target      != DeviceAlertTarget::ALL
             && z.alertTarget != target) continue;
 
-        uint8_t v = z.alertVariant % cfg->variantCount;
+        uint8_t    v = z.alertVariant % cfg->variantCount;
         TallyState s = cfg->patterns[v][step % cfg->patternLen];
 
         if (s == TallyState::NONE) {
-            if (z.stateColored && _state >= z.minState) {
+            if (z.stateColored && fallback >= z.minState) {
                 uint8_t r, g, b;
-                stateToColor(_state, r, g, b);
+                stateToColor(fallback, r, g, b);
                 lv_obj_set_style_bg_color(_zoneObjs[i], lv_color_make(r, g, b), 0);
                 lv_obj_set_style_bg_opa(_zoneObjs[i], LV_OPA_COVER, 0);
             } else {

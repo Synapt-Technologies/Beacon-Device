@@ -9,7 +9,7 @@ class ILutConsumer : public IConsumer {
 protected:
     ILutConsumer() { rebuildLut(); }
 
-    void applyBrightness(uint8_t /*brightness*/) override { rebuildLut(); }
+    void applyBrightness() override { rebuildLut(); }
 
     void rebuildLut() {
         _lut[0] = 0;

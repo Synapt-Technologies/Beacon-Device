@@ -1,44 +1,56 @@
 #pragma once
 
 #include "consumer/IConsumer.hpp"
+#include "consumer/ITextRenderer.hpp"
 #include "freertos/timers.h"
 #include <cstring>
 
-class IDisplayConsumer : public IConsumer {
+class IDisplayConsumer : public IConsumer, public ITextRenderer {
 public:
     static constexpr uint8_t TEXT_COUNT = 8;
     static constexpr size_t  TEXT_BUF   = 64;
 
     // A rectangular zone on the display.
     struct Zone {
-        int16_t           x, y, w, h;       // position and size in pixels
-        uint8_t           alertVariant;      // alert pattern variant (0 = no flash)
-        DeviceAlertTarget alertTarget;       // which alert targets activate this zone
-        TallyState        minState;          // visible when _state >= minState (NONE = always)
-        bool              stateColored;      // true = tracks tally color; false = transparent when idle
+        int16_t           x, y, w, h;
+        uint8_t           alertVariant;
+        DeviceAlertTarget alertTarget;
+        TallyState        minState;
+        bool              stateColored;
     };
 
     virtual ~IDisplayConsumer();
 
-    IDisplayConsumer* asDisplay() override { return this; }
-
-    // Number of text slots this consumer actively renders.
+    // TODO: More logical fname.
     virtual uint8_t labelCount() const { return 1; }
 
-    // Non-virtual. timeout==0 stores as permanent base; timeout>0 shows temporarily then reverts.
-    void setText(const char* text, uint8_t index, uint32_t timeout = 0);
+    // Set base text for a slot
+    void setText(const char* text, uint8_t index) {
+        applyText(text, index, 0);
+    }
+
+    void clearText(uint8_t index) { 
+        applyText("", index, 0  ); 
+    }
+
+    // ── ITextRenderer ─────────────────────────────────────────────────
+    void setAlertText(const char* text, uint32_t timeout) override {
+        setText(text, _alertSlot, timeout);
+    }
+    void clearAlertText() override {
+        clearText(_alertSlot);
+    }
+    DeviceAlertTarget alertTextTarget() const override { return _alertTextTarget; }
 
 protected:
     IDisplayConsumer() = default;
 
-    // Called when the text to display for a slot changes (on set OR on revert to base).
-    // Implementors must acquire any necessary rendering lock inside this method.
+    void applyText(uint8_t index, const char* text, uint32_t timeout = 0);
     virtual void onTextChanged(uint8_t index, const char* text) = 0;
 
-    const char* getBaseText(uint8_t index) const     { return _texts[index].base; }
-    bool        isRevertPending(uint8_t index) const { return _texts[index].revert != nullptr; }
+    const char* getBaseText(uint8_t index) const { return _texts[index].base; }
+    bool        isRevertPending(uint8_t index) const    { return _texts[index].revert != nullptr; }
 
-    // Common utility: canonical name for a tally state, "" for NONE.
     static const char* stateName(TallyState s) {
         switch (s) {
             case TallyState::PROGRAM: return "PROGRAM";
@@ -50,6 +62,9 @@ protected:
         }
     }
 
+    uint8_t           _alertSlot       = 0;
+    DeviceAlertTarget _alertTextTarget = DeviceAlertTarget::ALL;
+
 private:
     struct TextSlot {
         char          base[TEXT_BUF] = {};
@@ -57,6 +72,6 @@ private:
     };
     TextSlot _texts[TEXT_COUNT];
 
-    struct RevertCtx { IDisplayConsumer* self; uint8_t index; };
+    struct RevertCtx { IDisplayConsumer* self; };
     static void revertTimerCb(TimerHandle_t h);
 };

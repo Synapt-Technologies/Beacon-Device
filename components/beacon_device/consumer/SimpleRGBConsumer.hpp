@@ -1,11 +1,13 @@
 #pragma once
 
 #include "consumer/ILutConsumer.hpp"
+#include "consumer/ConsumerGroup.hpp"
 #include "driver/gpio.h"
 
 class SimpleRGBConsumer : public ILutConsumer {
 public:
-    SimpleRGBConsumer(gpio_num_t rPin, gpio_num_t gPin, gpio_num_t bPin, DeviceAlertTarget target)
+    SimpleRGBConsumer(gpio_num_t rPin, gpio_num_t gPin, gpio_num_t bPin,
+                      DeviceAlertTarget target = DeviceAlertTarget::ALL)
         : _rPin(rPin), _gPin(gPin), _bPin(bPin), _target(target)
     {
         gpio_set_direction(_rPin, GPIO_MODE_OUTPUT);
@@ -19,15 +21,8 @@ public:
         gpio_set_direction(_bPin, GPIO_MODE_DISABLE);
     }
 
-private:
-    gpio_num_t        _rPin, _gPin, _bPin;
-    DeviceAlertTarget _target;
-
-    void writeGpio(uint8_t r, uint8_t g, uint8_t b) {
-        // Binary GPIO. To add PWM: replace with ledc_set_duty/ledc_update_duty per pin.
-        gpio_set_level(_rPin, r > 0 ? 0 : 1);
-        gpio_set_level(_gPin, g > 0 ? 0 : 1);
-        gpio_set_level(_bPin, b > 0 ? 0 : 1);
+    void registerWith(ConsumerGroup& group) override {
+        group.addSection(this);
     }
 
     void applyState(TallyState state) override {
@@ -36,15 +31,25 @@ private:
         writeGpio(scale_brightness(r), scale_brightness(g), scale_brightness(b));
     }
 
-    void setAlertStep(DeviceAlertAction action, DeviceAlertTarget target, uint8_t step) override {
-        if (target != _target) return;
+    void applyAlertStep(DeviceAlertAction action, DeviceAlertTarget target,
+                        uint8_t step, TallyState fallback) override {
+        if (target != DeviceAlertTarget::ALL && _target != DeviceAlertTarget::ALL && _target != target)
+            return;
         const AlertPattern* pattern = getAlertPattern(action);
         if (!pattern) return;
-        // Use variant 1 — basic single-phase animation (variant 0 is always no-flash)
-        TallyState state = pattern->patterns[1][step % pattern->patternLen];
-        if (state == TallyState::NONE)
-            applyState(_state);
-        else
-            applyState(state);
+        // Variant 1: basic single-phase blink (variant 0 is always no-flash).
+        TallyState s = pattern->patterns[1 % pattern->variantCount][step % pattern->patternLen];
+        applyState(s == TallyState::NONE ? fallback : s);
+    }
+
+private:
+    gpio_num_t        _rPin, _gPin, _bPin;
+    DeviceAlertTarget _target;
+
+    void writeGpio(uint8_t r, uint8_t g, uint8_t b) {
+        // Binary GPIO (inverted logic). Replace with ledc for PWM.
+        gpio_set_level(_rPin, r > 0 ? 0 : 1);
+        gpio_set_level(_gPin, g > 0 ? 0 : 1);
+        gpio_set_level(_bPin, b > 0 ? 0 : 1);
     }
 };

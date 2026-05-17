@@ -11,7 +11,7 @@ public:
                              const ILvglDisplayConsumer::TextConfig* const* textConfigs, uint8_t textCount);
     ~Hub75LvglDisplayConsumer() override;
 
-    void applyBrightness(uint8_t brightness) override;
+    void applyBrightness() override;
 
 protected:
     lv_display_t* initHardware() override;

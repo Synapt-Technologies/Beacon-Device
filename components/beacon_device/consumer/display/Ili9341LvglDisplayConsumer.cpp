@@ -20,11 +20,11 @@ constexpr int LCD_DRAW_BUFFER_LINES     = 80;
 
 // ── Construction / destruction ───────────────────────────────────────
 
-Ili9341LvglDisplayConsumer::Ili9341LvglDisplayConsumer(const IDisplayConsumer::Zone* zones,
+Ili9341LvglDisplayConsumer::Ili9341LvglDisplayConsumer(ITallyColorMapper& colorMapper, const IDisplayConsumer::Zone* zones,
                                                        uint8_t zoneCount,
                                                        const ILvglDisplayConsumer::TextConfig* const* textConfigs,
                                                        uint8_t textCount)
-    : ILvglDisplayConsumer(zones, zoneCount, textConfigs, textCount)
+    : ILvglDisplayConsumer(colorMapper, zones, zoneCount, textConfigs, textCount)
 {}
 
 Ili9341LvglDisplayConsumer::~Ili9341LvglDisplayConsumer() {

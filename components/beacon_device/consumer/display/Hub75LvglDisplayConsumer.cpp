@@ -9,12 +9,13 @@ constexpr const char* TAG = "Hub75Display";
 
 // ── Construction / destruction ───────────────────────────────────────
 
-Hub75LvglDisplayConsumer::Hub75LvglDisplayConsumer(const Hub75Config& config,
+Hub75LvglDisplayConsumer::Hub75LvglDisplayConsumer(ITallyColorMapper& colorMapper,
+                                                   const Hub75Config& config,
                                                    const IDisplayConsumer::Zone* zones,
                                                    uint8_t zoneCount,
                                                    const ILvglDisplayConsumer::TextConfig* const* textConfigs,
                                                    uint8_t textCount)
-    : ILvglDisplayConsumer(zones, zoneCount, textConfigs, textCount),
+    : ILvglDisplayConsumer(colorMapper, zones, zoneCount, textConfigs, textCount),
       _config(config),
       _driver(_config)
 {}

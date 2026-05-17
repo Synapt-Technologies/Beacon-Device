@@ -6,7 +6,7 @@
 class Hub75LvglDisplayConsumer : public ILvglDisplayConsumer {
 public:
     // Zones are owned by the caller and must outlive this object.
-    Hub75LvglDisplayConsumer(const Hub75Config& config,
+    Hub75LvglDisplayConsumer(ITallyColorMapper& colorMapper, const Hub75Config& config,
                              const IDisplayConsumer::Zone* zones, uint8_t zoneCount,
                              const ILvglDisplayConsumer::TextConfig* const* textConfigs, uint8_t textCount);
     ~Hub75LvglDisplayConsumer() override;

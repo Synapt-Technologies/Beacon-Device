@@ -11,6 +11,7 @@ class IDisplayConsumer; // forward declaration for asDisplay()
 
 class IConsumer {
 public:
+    // TODO: Change the way colormapper is included. Should probably be default, and overwriteble.
     IConsumer(ITallyColorMapper& colorMapper) : _colorMapper(colorMapper) {}
     virtual ~IConsumer() = default;
 

@@ -8,6 +8,7 @@ Firmware written for DIY devices in the Beacon ecosystem
  - [ ] Make textAlert an array of tasks in the group, one per index of alert text.
  - [ ] Architecture refactor.
    - [ ] connection -> producer
+ - [ ] On ILvgl every tally updates means font recalc. Inefficient.
 
 
 # DEVNOTES
